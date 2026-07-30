@@ -3,8 +3,8 @@
     "Author": "Monitor Technologies",
     "Name": "Kefka P4 Trainer",
     "InternalName": "KefkaP4Trainer",
-    "AssemblyVersion": "0.1.4.0",
-    "TestingAssemblyVersion": "0.1.4.0",
+    "AssemblyVersion": "0.1.5.0",
+    "TestingAssemblyVersion": "0.1.5.0",
     "Punchline": "Local Kefka P4 position practice.",
     "Description": "A private, local-only Kefka P4 practice simulator and ground overlay. It reads only your position and facing and never changes game state. Open it with /kefkap4.",
     "ApplicableVersion": "any",
@@ -23,8 +23,8 @@
       "simulator",
       "kefka"
     ],
-    "DownloadLinkInstall": "https://github.com/Neycourt5/KefkaP4/releases/download/v0.1.4.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/Neycourt5/KefkaP4/releases/download/v0.1.4.0/latest.zip",
-    "DownloadLinkTesting": "https://github.com/Neycourt5/KefkaP4/releases/download/v0.1.4.0/latest.zip"
+    "DownloadLinkInstall": "https://github.com/Neycourt5/KefkaP4/releases/download/v0.1.5.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/Neycourt5/KefkaP4/releases/download/v0.1.5.0/latest.zip",
+    "DownloadLinkTesting": "https://github.com/Neycourt5/KefkaP4/releases/download/v0.1.5.0/latest.zip"
   }
 ]
