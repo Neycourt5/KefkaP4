@@ -4,7 +4,9 @@ using Dalamud.Plugin.Services;
 
 namespace KefkaP4Trainer;
 
-internal static class Services
+// Not a static class: Dalamud's Create<T>() injects the [PluginService] members
+// below, and C# forbids static types as type arguments.
+internal sealed class Services
 {
     [PluginService]
     internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;

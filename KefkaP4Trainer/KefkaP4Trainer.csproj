@@ -1,7 +1,7 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.0.0</Version>
-    <PackageProjectUrl>https://github.com/Neycourt5/KefkaP4Trainer</PackageProjectUrl>
+    <Version>0.1.1.0</Version>
+    <PackageProjectUrl>https://github.com/Neycourt5/KefkaP4</PackageProjectUrl>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
     <Description>Local-only Kefka P4 position practice overlay.</Description>

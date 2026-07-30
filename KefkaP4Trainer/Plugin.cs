@@ -28,8 +28,13 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
     private bool pausedForMissingPlayer;
     private bool updateFaulted;
 
-    public Plugin()
+    public Plugin(IDalamudPluginInterface pluginInterface)
     {
+        // Dalamud injects constructor parameters, not static members. This call
+        // populates the [PluginService] statics on Services; without it every one
+        // of them stays null and the first access below throws.
+        pluginInterface.Create<Services>();
+
         Configuration =
             Services.PluginInterface.GetPluginConfig() as Configuration
             ?? new Configuration();
