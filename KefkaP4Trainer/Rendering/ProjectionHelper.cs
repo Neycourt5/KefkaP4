@@ -31,11 +31,29 @@ internal sealed class ProjectionHelper
 
     public void BeginFrame() => failureCount = 0;
 
-    public ProjectionResult Project(Vector3 worldPosition)
+    public ProjectionResult Project(Vector3 worldPosition) =>
+        Project(worldPosition, recordFailure: true);
+
+    /// <summary>
+    /// Projects without recording a failure, for callers that deliberately test
+    /// points expected to be unprojectable.
+    /// </summary>
+    /// <remarks>
+    /// Edge clipping bisects across the projection boundary, so roughly half its
+    /// probes fail by design and would otherwise swamp <see cref="FailureCount"/>.
+    /// </remarks>
+    public ProjectionResult Probe(Vector3 worldPosition) =>
+        Project(worldPosition, recordFailure: false);
+
+    private ProjectionResult Project(Vector3 worldPosition, bool recordFailure)
     {
         if (!IsFinite(worldPosition))
         {
-            failureCount++;
+            if (recordFailure)
+            {
+                failureCount++;
+            }
+
             return ProjectionResult.Failed;
         }
 

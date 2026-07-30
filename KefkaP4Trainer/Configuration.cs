@@ -74,6 +74,10 @@ public sealed class Configuration : IPluginConfiguration
 
     public float MagicTellScale { get; set; } = 1;
 
+    // Thunder and ice telegraphs otherwise share the phase palette, leaving shape
+    // (line versus cone) as the only thing telling the two elements apart.
+    public bool ElementColoredTelegraphs { get; set; } = true;
+
     public bool ShowArenaBoundary { get; set; } = true;
 
     public bool ShowDebugCoordinateLabels { get; set; }

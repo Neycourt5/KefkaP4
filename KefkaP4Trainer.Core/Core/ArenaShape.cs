@@ -24,6 +24,17 @@ public enum ShapePhase
     Failure,
 }
 
+/// <summary>
+/// Which element a telegraph belongs to. Thunder is cast as the lines and ice as
+/// the cones, so the two are otherwise distinguishable only by shape.
+/// </summary>
+public enum MagicElement
+{
+    None,
+    Thunder,
+    Ice,
+}
+
 public sealed record ArenaShape
 {
     public required ShapeKind Kind { get; init; }
@@ -31,6 +42,12 @@ public sealed record ArenaShape
     public required string Label { get; init; }
 
     public required ShapePhase Phase { get; init; }
+
+    /// <summary>
+    /// Element used to hue the telegraph. Defaults to <see cref="MagicElement.None"/>
+    /// so non-elemental shapes keep the phase palette.
+    /// </summary>
+    public MagicElement Element { get; init; }
 
     public required double StartsAt { get; init; }
 

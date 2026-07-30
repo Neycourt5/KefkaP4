@@ -278,6 +278,21 @@ internal sealed class ConfigWindow : Window
             ImGui.Unindent();
         }
 
+        var elementColors = config.ElementColoredTelegraphs;
+        if (ImGui.Checkbox("Colour telegraphs by element", ref elementColors))
+        {
+            config.ElementColoredTelegraphs = elementColors;
+            changed = true;
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "Thunder lines draw purple and ice cones blue, staying dim while\n"
+                + "telegraphed and brightening as they go live. Off returns both to\n"
+                + "the shared orange/red pair.");
+        }
+
         var magicTell = config.ShowMagicTell;
         if (ImGui.Checkbox("Show real/fake badges over Kefka", ref magicTell))
         {

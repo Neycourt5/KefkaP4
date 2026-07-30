@@ -287,22 +287,41 @@ internal sealed class ArenaOverlayRenderer
 
         var scale = Math.Clamp(configuration.MagicTellScale, 0.5f, 3);
         var radius = 26 * scale;
-        var gap = 20 * scale;
-        var step = (radius * 2) + gap;
-        var totalWidth = (count * radius * 2) + ((count - 1) * gap);
+        var rowGap = 14 * scale;
+        var captionGap = 10 * scale;
 
-        // Lifted clear of the boss so the badges do not sit on the cast bar.
-        var origin = anchor.ScreenPosition
-            - new Vector2(totalWidth * 0.5f, (radius * 2) + (90 * scale));
+        // Stacked, thunder over ice, matching where the two rings sit on Kefka:
+        // thunder up around his head, ice down by his legs. Captions sit beside
+        // each badge rather than under it, which is what ran them together when
+        // the badges were side by side.
+        var thunderCaption = $"THUNDER {FakeWord(tell.ThunderFake)}";
+        var iceCaption = $"ICE {FakeWord(tell.IceFake)}";
+        var captionWidth = 0f;
+        if (tell.HasThunder)
+        {
+            captionWidth = MathF.Max(captionWidth, ImGui.CalcTextSize(thunderCaption).X);
+        }
 
-        var slot = 0;
+        if (tell.HasIce)
+        {
+            captionWidth = MathF.Max(captionWidth, ImGui.CalcTextSize(iceCaption).X);
+        }
+
+        var groupWidth = (radius * 2) + captionGap + captionWidth;
+        var rowStep = (radius * 2) + rowGap;
+        var groupHeight = (count * radius * 2) + ((count - 1) * rowGap);
+        var left = anchor.ScreenPosition.X - (groupWidth * 0.5f);
+        var top = anchor.ScreenPosition.Y - groupHeight - (110 * scale);
+
+        var row = 0;
         if (tell.HasThunder)
         {
             DrawTellBadge(
                 drawList,
-                origin + new Vector2((slot++ * step) + radius, radius),
+                new Vector2(left + radius, top + (row++ * rowStep) + radius),
                 radius,
-                "THUNDER",
+                captionGap,
+                thunderCaption,
                 tell.ThunderFake);
         }
 
@@ -310,21 +329,19 @@ internal sealed class ArenaOverlayRenderer
         {
             DrawTellBadge(
                 drawList,
-                origin + new Vector2((slot * step) + radius, radius),
+                new Vector2(left + radius, top + (row * rowStep) + radius),
                 radius,
-                "ICE",
+                captionGap,
+                iceCaption,
                 tell.IceFake);
         }
 
-        var caption = tell.Label;
-        var captionSize = ImGui.CalcTextSize(caption);
-        var captionPosition = new Vector2(
-            anchor.ScreenPosition.X - (captionSize.X * 0.5f),
-            origin.Y - captionSize.Y - (6 * scale));
+        var label = tell.Label;
+        var labelSize = ImGui.CalcTextSize(label);
         DrawShadowedText(
             drawList,
-            caption,
-            captionPosition,
+            label,
+            new Vector2(anchor.ScreenPosition.X - (labelSize.X * 0.5f), top - labelSize.Y - (6 * scale)),
             ImGui.GetColorU32(new Vector4(0.90f, 0.93f, 1.00f, 1)));
     }
 
@@ -332,35 +349,44 @@ internal sealed class ArenaOverlayRenderer
         ImDrawListPtr drawList,
         Vector2 center,
         float radius,
-        string element,
+        float captionGap,
+        string caption,
         bool fake)
     {
         var accent = fake
             ? new Vector4(1.00f, 0.45f, 0.10f, 1)
-            : new Vector4(0.30f, 0.85f, 1.00f, 1);
+            : new Vector4(0.25f, 0.60f, 1.00f, 1);
         var accentColor = ImGui.GetColorU32(accent);
-        var textColor = ImGui.GetColorU32(new Vector4(1, 1, 1, 1));
 
         drawList.AddCircleFilled(
             center, radius, ImGui.GetColorU32(new Vector4(0.03f, 0.04f, 0.07f, 0.90f)), 32);
         drawList.AddCircle(center, radius, accentColor, 32, MathF.Max(2, radius * 0.16f));
 
-        // Only fake orbs carry the question mark in game; leaving real ones bare
-        // keeps the badge a rehearsal of the same read rather than a new symbol.
         if (fake)
         {
+            // A question mark is what the orb actually shows when an element is
+            // inverted, so the badge rehearses the same read as the boss.
             var glyphSize = ImGui.CalcTextSize("?");
-            DrawShadowedText(drawList, "?", center - (glyphSize * 0.5f), textColor);
+            DrawShadowedText(
+                drawList,
+                "?",
+                center - (glyphSize * 0.5f),
+                ImGui.GetColorU32(new Vector4(1, 1, 1, 1)));
+        }
+        else
+        {
+            drawList.AddCircleFilled(center, radius * 0.46f, accentColor, 32);
         }
 
-        var caption = $"{element} {(fake ? "FAKE" : "REAL")}";
         var captionSize = ImGui.CalcTextSize(caption);
         DrawShadowedText(
             drawList,
             caption,
-            center + new Vector2(-captionSize.X * 0.5f, radius + 4),
+            new Vector2(center.X + radius + captionGap, center.Y - (captionSize.Y * 0.5f)),
             accentColor);
     }
+
+    private static string FakeWord(bool fake) => fake ? "FAKE" : "REAL";
 
     private static void DrawShadowedText(
         ImDrawListPtr drawList,

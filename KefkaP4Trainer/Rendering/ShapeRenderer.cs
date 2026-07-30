@@ -8,6 +8,14 @@ internal sealed class ShapeRenderer
 {
     private static readonly Vector3 UpcomingColor = new(1.00f, 0.68f, 0.12f);
     private static readonly Vector3 DangerColor = new(1.00f, 0.20f, 0.18f);
+
+    // Element telegraphs carry their hue from the element and their urgency from
+    // brightness, so thunder and ice stay apart without losing the "this is live
+    // now" read that the shared orange/red pair provided.
+    private static readonly Vector3 ThunderUpcomingColor = new(0.58f, 0.36f, 0.92f);
+    private static readonly Vector3 ThunderDangerColor = new(0.85f, 0.28f, 1.00f);
+    private static readonly Vector3 IceUpcomingColor = new(0.26f, 0.62f, 0.96f);
+    private static readonly Vector3 IceDangerColor = new(0.36f, 0.90f, 1.00f);
     private static readonly Vector3 RequiredColor = new(0.20f, 0.95f, 0.55f);
     private static readonly Vector3 InformationColor = new(0.35f, 0.68f, 1.00f);
     private static readonly Vector3 SuccessColor = new(0.20f, 0.90f, 0.35f);
@@ -17,6 +25,10 @@ internal sealed class ShapeRenderer
     private Vector2[] arenaPoints = new Vector2[64];
     private Vector2[] screenPoints = new Vector2[64];
     private ProjectionResult[] projectedPoints = new ProjectionResult[64];
+
+    // Clipping can introduce a boundary vertex per crossed edge, so this needs
+    // room for twice the source point count.
+    private Vector2[] clippedPoints = new Vector2[128];
 
     public ShapeRenderer(ProjectionHelper projection)
     {
@@ -35,7 +47,7 @@ internal sealed class ShapeRenderer
             return;
         }
 
-        var color = ColorFor(shape);
+        var color = ColorFor(shape, configuration);
         var fillOpacity = Math.Clamp(configuration.FillOpacity, 0, 1);
         if (shape.Phase == ShapePhase.Information)
         {
@@ -153,7 +165,9 @@ internal sealed class ShapeRenderer
 
         if (alwaysLabel && !configuration.ShowDebugCoordinateLabels)
         {
-            var color = Pack(ColorFor(marker), Math.Clamp(configuration.OutlineOpacity, 0, 1));
+            var color = Pack(
+                ColorFor(marker, configuration),
+                Math.Clamp(configuration.OutlineOpacity, 0, 1));
             DrawWorldLabel(
                 foreground,
                 arena,
@@ -234,8 +248,8 @@ internal sealed class ShapeRenderer
         }
 
         ProjectPoints(arena, segments, heightOffset);
-        FillConvexIfComplete(drawList, segments, fillColor);
-        DrawClosedOutline(drawList, segments, outlineColor, thickness);
+        DrawClippedPolygon(
+            drawList, arena, segments, heightOffset, fillColor, outlineColor, thickness);
     }
 
     private void DrawDonut(
@@ -322,8 +336,7 @@ internal sealed class ShapeRenderer
         arenaPoints[2] = end + side;
         arenaPoints[3] = end - side;
         ProjectPoints(arena, 4, heightOffset);
-        FillConvexIfComplete(drawList, 4, fillColor);
-        DrawClosedOutline(drawList, 4, outlineColor, thickness);
+        DrawClippedPolygon(drawList, arena, 4, heightOffset, fillColor, outlineColor, thickness);
     }
 
     private void DrawCone(
@@ -357,8 +370,7 @@ internal sealed class ShapeRenderer
         arenaPoints[1] = end + side * baseHalfWidth;
         arenaPoints[2] = end - side * baseHalfWidth;
         ProjectPoints(arena, 3, heightOffset);
-        FillConvexIfComplete(drawList, 3, fillColor);
-        DrawClosedOutline(drawList, 3, outlineColor, thickness);
+        DrawClippedPolygon(drawList, arena, 3, heightOffset, fillColor, outlineColor, thickness);
     }
 
     private void DrawDirectionArrow(
@@ -423,6 +435,109 @@ internal sealed class ShapeRenderer
         DrawClosedOutline(drawList, offset, count, outlineColor, thickness);
     }
 
+    /// <summary>
+    /// Fills and outlines the current arena points, clipping any edge that leaves
+    /// the projectable region rather than discarding it.
+    /// </summary>
+    /// <remarks>
+    /// The game cannot project a point behind the camera. Treating that as "skip
+    /// the vertex" removed the whole fill and both adjoining edges, so a cone
+    /// angled towards the camera disappeared instead of being cut off.
+    /// </remarks>
+    private void DrawClippedPolygon(
+        ImDrawListPtr drawList,
+        ArenaTransform arena,
+        int count,
+        float heightOffset,
+        uint fillColor,
+        uint outlineColor,
+        float thickness)
+    {
+        var clipped = BuildClippedPolygon(arena, count, heightOffset);
+        if (clipped < 2)
+        {
+            return;
+        }
+
+        if (fillColor != 0 && clipped >= 3)
+        {
+            drawList.AddConvexPolyFilled(ref clippedPoints[0], clipped, fillColor);
+        }
+
+        if (outlineColor == 0)
+        {
+            return;
+        }
+
+        for (var index = 0; index < clipped; index++)
+        {
+            var next = (index + 1) % clipped;
+            drawList.AddLine(clippedPoints[index], clippedPoints[next], outlineColor, thickness);
+        }
+    }
+
+    private int BuildClippedPolygon(ArenaTransform arena, int count, float heightOffset)
+    {
+        var clipped = 0;
+        for (var index = 0; index < count; index++)
+        {
+            var next = (index + 1) % count;
+            var current = projectedPoints[index];
+            var following = projectedPoints[next];
+
+            if (current.Succeeded)
+            {
+                clippedPoints[clipped++] = current.ScreenPosition;
+            }
+
+            // Exactly one end projected, so the edge crosses the boundary and the
+            // crossing point becomes a vertex of the clipped polygon.
+            if (current.Succeeded != following.Succeeded
+                && TryFindBoundary(
+                    arena,
+                    arenaPoints[current.Succeeded ? index : next],
+                    arenaPoints[current.Succeeded ? next : index],
+                    heightOffset,
+                    out var boundary))
+            {
+                clippedPoints[clipped++] = boundary;
+            }
+        }
+
+        return clipped;
+    }
+
+    private bool TryFindBoundary(
+        ArenaTransform arena,
+        Vector2 inside,
+        Vector2 outside,
+        float heightOffset,
+        out Vector2 screenPosition)
+    {
+        // Bisect for the last point on the edge that still projects. Twelve steps
+        // resolves the crossing far finer than a pixel at any raid distance.
+        var good = inside;
+        var bad = outside;
+        var result = projection.Probe(arena.SimulatorToWorld(good, heightOffset));
+        for (var step = 0; step < 12; step++)
+        {
+            var middle = (good + bad) * 0.5f;
+            var candidate = projection.Probe(arena.SimulatorToWorld(middle, heightOffset));
+            if (candidate.Succeeded)
+            {
+                good = middle;
+                result = candidate;
+            }
+            else
+            {
+                bad = middle;
+            }
+        }
+
+        screenPosition = result.ScreenPosition;
+        return result.Succeeded;
+    }
+
     private void ProjectPoints(ArenaTransform arena, int count, float heightOffset)
     {
         for (var index = 0; index < count; index++)
@@ -432,31 +547,6 @@ internal sealed class ShapeRenderer
             screenPoints[index] = projectedPoints[index].ScreenPosition;
         }
     }
-
-    private void FillConvexIfComplete(ImDrawListPtr drawList, int count, uint color)
-    {
-        if (color == 0)
-        {
-            return;
-        }
-
-        for (var index = 0; index < count; index++)
-        {
-            if (!projectedPoints[index].Succeeded)
-            {
-                return;
-            }
-        }
-
-        drawList.AddConvexPolyFilled(ref screenPoints[0], count, color);
-    }
-
-    private void DrawClosedOutline(
-        ImDrawListPtr drawList,
-        int count,
-        uint color,
-        float thickness) =>
-        DrawClosedOutline(drawList, 0, count, color, thickness);
 
     private void DrawClosedOutline(
         ImDrawListPtr drawList,
@@ -493,10 +583,26 @@ internal sealed class ShapeRenderer
         Array.Resize(ref arenaPoints, capacity);
         Array.Resize(ref screenPoints, capacity);
         Array.Resize(ref projectedPoints, capacity);
+        Array.Resize(ref clippedPoints, capacity * 2);
     }
 
-    private static Vector3 ColorFor(ArenaShape shape)
+    private static Vector3 ColorFor(ArenaShape shape, Configuration configuration)
     {
+        // Only the two live phases are recoloured. A resolved-into-required or
+        // information shape keeps its palette so the phase language stays intact.
+        if (configuration.ElementColoredTelegraphs
+            && shape.Element != MagicElement.None
+            && shape.Phase is ShapePhase.Upcoming or ShapePhase.Dangerous)
+        {
+            var dangerous = shape.Phase == ShapePhase.Dangerous;
+            return shape.Element switch
+            {
+                MagicElement.Thunder => dangerous ? ThunderDangerColor : ThunderUpcomingColor,
+                MagicElement.Ice => dangerous ? IceDangerColor : IceUpcomingColor,
+                _ => dangerous ? DangerColor : UpcomingColor,
+            };
+        }
+
         if (shape.Phase == ShapePhase.Information)
         {
             if (shape.Label.Contains("Black", StringComparison.OrdinalIgnoreCase))

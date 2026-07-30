@@ -108,6 +108,7 @@ public static class KefkaP4Mechanics
         {
             Kind = ShapeKind.Rectangle,
             Label = label,
+            Element = MagicElement.Thunder,
             Phase = resolved ? ShapePhase.Dangerous : ShapePhase.Upcoming,
             StartsAt = startsAt,
             EndsAt = endsAt,
@@ -127,6 +128,7 @@ public static class KefkaP4Mechanics
         {
             Kind = ShapeKind.Cone,
             Label = label,
+            Element = MagicElement.Ice,
             Phase = resolved ? ShapePhase.Dangerous : ShapePhase.Upcoming,
             StartsAt = startsAt,
             EndsAt = endsAt,
