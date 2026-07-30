@@ -45,3 +45,8 @@ KefkaP4Trainer_Master_Prompt.txt
 
 ## Local Dalamud dev libraries, if anyone drops them in the tree
 dalamud-dev/
+
+# Local reference copy of the Waju browser simulator this project was ported
+# from. Third-party source, kept in the workspace for checking cast times and
+# mechanic behaviour against the original; never committed.
+Waju-Sims/

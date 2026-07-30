@@ -133,6 +133,22 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool UseGameStatusIcons { get; set; } = true;
 
+    // Cast bars, defaulted to the right of a 1080p screen and clamped to the
+    // display at draw time so an odd resolution cannot strand them off-screen.
+    public bool ShowCastBars { get; set; } = true;
+
+    public float CastBarX { get; set; } = 1500;
+
+    public float CastBarY { get; set; } = 300;
+
+    public float CastBarScale { get; set; } = 1;
+
+    public bool ShowCountdown { get; set; } = true;
+
+    public float CountdownScale { get; set; } = 1;
+
+    public float CountdownHeightFraction { get; set; } = 0.35f;
+
     public bool MainWindowVisibleAfterStart { get; set; }
 
     public void Save() => Services.PluginInterface.SavePluginConfig(this);

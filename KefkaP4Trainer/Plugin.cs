@@ -24,6 +24,8 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
     private readonly ArenaOverlayRenderer arenaOverlayRenderer;
     private readonly StatusHudRenderer statusHudRenderer;
     private readonly ResultOverlayRenderer resultOverlayRenderer;
+    private readonly CastBarRenderer castBarRenderer;
+    private readonly CountdownRenderer countdownRenderer;
     private bool disposed;
     private bool pausedForMissingPlayer;
     private bool updateFaulted;
@@ -56,6 +58,8 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
         arenaOverlayRenderer = new ArenaOverlayRenderer(Services.GameGui, Services.Log);
         statusHudRenderer = new StatusHudRenderer(Services.Log, Services.TextureProvider);
         resultOverlayRenderer = new ResultOverlayRenderer(Services.Log);
+        castBarRenderer = new CastBarRenderer(Services.Log);
+        countdownRenderer = new CountdownRenderer(Services.Log);
 
         Services.CommandManager.AddHandler(
             CommandName,
@@ -369,6 +373,8 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
         {
             arenaOverlayRenderer.Draw(Transform, Engine, LastPlayer, Configuration, testGhosts);
             statusHudRenderer.Draw(Engine, Configuration);
+            castBarRenderer.Draw(Engine, Configuration);
+            countdownRenderer.Draw(Engine, Configuration);
             resultOverlayRenderer.Draw(Engine);
             windowSystem.Draw();
         }

@@ -24,6 +24,9 @@ public sealed class KefkaP4Encounter
 
     public KefkaP4Assignments Assignments { get; private set; } = null!;
 
+    /// <summary>Casts in this pull, for the cast bars.</summary>
+    public IReadOnlyList<CastBar> CastBars { get; private set; } = [];
+
     public PartyRole PlayerRole { get; private set; }
 
     public Vector2? RequiredPosition { get; private set; }
@@ -46,6 +49,9 @@ public sealed class KefkaP4Encounter
     public void Reset(long seed, PartyRole playerRole)
     {
         Assignments = KefkaP4Assignments.Generate(seed);
+        // Chaos casts Inferno or Tsunami first depending on the seed, so the bar
+        // names are rebuilt with the assignments rather than being static.
+        CastBars = KefkaP4CastBars.Build(Assignments.InfernoFirst);
         PlayerRole = playerRole;
         shapes.Clear();
         debuffs.Clear();

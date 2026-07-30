@@ -413,6 +413,78 @@ internal sealed class ConfigWindow : Window
             changed = true;
         }
 
+        ImGui.Separator();
+
+        var castBars = config.ShowCastBars;
+        if (ImGui.Checkbox("Show cast bars", ref castBars))
+        {
+            config.ShowCastBars = castBars;
+            changed = true;
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "One bar per cast in flight, so an overlapping Grand Cross and\n"
+                + "Mysterious Magic each get their own row.");
+        }
+
+        if (config.ShowCastBars)
+        {
+            ImGui.Indent();
+
+            var castX = config.CastBarX;
+            if (ImGui.DragFloat("Cast bar X", ref castX, 1, 0, 6000, "%.0f px"))
+            {
+                config.CastBarX = castX;
+                changed = true;
+            }
+
+            var castY = config.CastBarY;
+            if (ImGui.DragFloat("Cast bar Y", ref castY, 1, 0, 4000, "%.0f px"))
+            {
+                config.CastBarY = castY;
+                changed = true;
+            }
+
+            var castScale = config.CastBarScale;
+            if (ImGui.SliderFloat("Cast bar scale", ref castScale, 0.5f, 2.5f, "%.2fx"))
+            {
+                config.CastBarScale = castScale;
+                changed = true;
+            }
+
+            ImGui.Unindent();
+        }
+
+        var countdown = config.ShowCountdown;
+        if (ImGui.Checkbox("Show large countdown", ref countdown))
+        {
+            config.ShowCountdown = countdown;
+            changed = true;
+        }
+
+        if (config.ShowCountdown)
+        {
+            ImGui.Indent();
+
+            var countdownScale = config.CountdownScale;
+            if (ImGui.SliderFloat("Countdown size", ref countdownScale, 0.5f, 6, "%.2fx"))
+            {
+                config.CountdownScale = countdownScale;
+                changed = true;
+            }
+
+            var countdownHeight = config.CountdownHeightFraction;
+            if (ImGui.SliderFloat("Countdown height", ref countdownHeight, 0.05f, 0.9f, "%.2f"))
+            {
+                config.CountdownHeightFraction = countdownHeight;
+                changed = true;
+            }
+
+            ImGui.Unindent();
+        }
+
         return changed;
     }
 
