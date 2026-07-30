@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      # main is checked out rather than the tag so the repo.json commit below has
+      # a branch to push to. Cut release tags from main's HEAD.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Resolve version from tag
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $version = $tag.TrimStart('v')
+          # Dalamud compares four-part assembly versions; pad shorter tags.
+          $parts = $version.Split('.')
+          while ($parts.Count -lt 4) { $parts += '0' }
+          $version = ($parts[0..3] -join '.')
+          if ($version -notmatch '^\d+\.\d+\.\d+\.\d+$') {
+            throw "Tag '$tag' did not resolve to a four-part version (got '$version')."
+          }
+          "PLUGIN_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "RELEASE_TAG=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Building version $version from tag $tag"
+
+      - name: Download Dalamud development libraries
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'dalamud'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $zip = Join-Path $dir 'latest.zip'
+          Invoke-WebRequest -Uri 'https://goatcorp.github.io/dalamud-distrib/latest.zip' -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          "DALAMUD_HOME=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Restore
+        run: dotnet restore KefkaP4Trainer.sln -p:Platform=x64
+
+      - name: Run Core tests
+        run: dotnet test KefkaP4Trainer.Core.Tests/KefkaP4Trainer.Core.Tests.csproj -c Release --no-restore
+
+      - name: Build plugin
+        run: >
+          dotnet build KefkaP4Trainer/KefkaP4Trainer.csproj
+          -c Release -p:Platform=x64 --no-restore
+          -p:Version=${{ env.PLUGIN_VERSION }}
+          -p:AssemblyVersion=${{ env.PLUGIN_VERSION }}
+          -p:FileVersion=${{ env.PLUGIN_VERSION }}
+
+      - name: Verify packaged manifest
+        shell: pwsh
+        run: |
+          $out = 'KefkaP4Trainer/bin/x64/Release/KefkaP4Trainer'
+          if (-not (Test-Path "$out/latest.zip")) { throw "latest.zip was not produced at $out." }
+          $manifest = Get-Content "$out/KefkaP4Trainer.json" -Raw | ConvertFrom-Json
+          if ($manifest.AssemblyVersion -ne $env:PLUGIN_VERSION) {
+            throw "Packaged AssemblyVersion '$($manifest.AssemblyVersion)' does not match tag version '$($env:PLUGIN_VERSION)'."
+          }
+          "API_LEVEL=$($manifest.DalamudApiLevel)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Packaged API level $($manifest.DalamudApiLevel), version $($manifest.AssemblyVersion)."
+
+      - name: Update repo.json
+        shell: pwsh
+        run: |
+          $url = "https://github.com/${{ github.repository }}/releases/download/$env:RELEASE_TAG/latest.zip"
+          $repo = Get-Content repo.json -Raw | ConvertFrom-Json
+          $entry = $repo[0]
+          $entry.AssemblyVersion = $env:PLUGIN_VERSION
+          $entry.TestingAssemblyVersion = $env:PLUGIN_VERSION
+          $entry.DalamudApiLevel = [int]$env:API_LEVEL
+          $entry.TestingDalamudApiLevel = [int]$env:API_LEVEL
+          $entry.DownloadLinkInstall = $url
+          $entry.DownloadLinkUpdate = $url
+          $entry.DownloadLinkTesting = $url
+          # ConvertTo-Json unwraps single-element arrays; force the array back.
+          $json = ConvertTo-Json -InputObject @($entry) -Depth 10
+          if (-not $json.TrimStart().StartsWith('[')) { $json = "[$json]" }
+          Set-Content -Path repo.json -Value $json -Encoding utf8
+
+      - name: Commit repo.json
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add repo.json
+          # git diff --quiet signals "has changes" through its exit code, not stdout.
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host 'repo.json is already up to date.'
+          } else {
+            git commit -m "Release $env:RELEASE_TAG"
+            git push origin HEAD:main
+          }
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }}
+          files: KefkaP4Trainer/bin/x64/Release/KefkaP4Trainer/latest.zip
+          fail_on_unmatched_files: true
+          generate_release_notes: true

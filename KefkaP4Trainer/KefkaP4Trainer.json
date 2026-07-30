@@ -1,0 +1,14 @@
+{
+  "Author": "Monitor Technologies",
+  "Name": "Kefka P4 Trainer",
+  "Punchline": "Local Kefka P4 position practice.",
+  "Description": "A private, local-only Kefka P4 practice simulator and ground overlay. It reads only your position and facing and never changes game state. Open it with /kefkap4.",
+  "ApplicableVersion": "any",
+  "RepoUrl": "https://github.com/Neycourt5/KefkaP4Trainer",
+  "AcceptsFeedback": false,
+  "Tags": [
+    "practice",
+    "simulator",
+    "kefka"
+  ]
+}
