@@ -54,7 +54,7 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
         windowSystem.AddWindow(configWindow);
         windowSystem.AddWindow(debugWindow);
         arenaOverlayRenderer = new ArenaOverlayRenderer(Services.GameGui, Services.Log);
-        statusHudRenderer = new StatusHudRenderer(Services.Log);
+        statusHudRenderer = new StatusHudRenderer(Services.Log, Services.TextureProvider);
         resultOverlayRenderer = new ResultOverlayRenderer(Services.Log);
 
         Services.CommandManager.AddHandler(

@@ -25,12 +25,14 @@ internal sealed class StatusHudRenderer
     private static readonly TimeSpan PositionSaveDelay = TimeSpan.FromMilliseconds(500);
 
     private readonly RenderExceptionLogger errors;
+    private readonly StatusIconProvider icons;
     private bool positionDirty;
     private DateTime positionChangedAtUtc;
 
-    public StatusHudRenderer(IPluginLog log)
+    public StatusHudRenderer(IPluginLog log, ITextureProvider textures)
     {
         errors = new RenderExceptionLogger(log, nameof(StatusHudRenderer));
+        icons = new StatusIconProvider(textures);
     }
 
     public void Draw(SimulationEngine engine, Configuration configuration)
@@ -172,12 +174,27 @@ internal sealed class StatusHudRenderer
             var debuff = debuffs[index];
             var iconMin = cursor + new Vector2(index * (iconSize + spacing), 0);
             var iconMax = iconMin + new Vector2(iconSize, iconSize);
-            var iconColor = ImGui.GetColorU32(new Vector4(ColorFor(debuff.Kind), 0.92f));
             var iconBorder = ImGui.GetColorU32(new Vector4(1, 1, 1, 0.85f));
-            drawList.AddRectFilled(iconMin, iconMax, iconColor, 4 * scale);
-            drawList.AddRect(iconMin, iconMax, iconBorder, 4 * scale);
+            var wrap = configuration.UseGameStatusIcons ? icons.TryGet(debuff.Kind) : null;
+            if (wrap is not null)
+            {
+                // Status icons are taller than they are wide, so fit to the slot
+                // height and centre horizontally rather than stretching to square.
+                var aspect = wrap.Height > 0 ? (float)wrap.Width / wrap.Height : 1f;
+                var drawWidth = iconSize * aspect;
+                var imageMin = iconMin + new Vector2((iconSize - drawWidth) * 0.5f, 0);
+                drawList.AddImage(wrap.Handle, imageMin, imageMin + new Vector2(drawWidth, iconSize));
+            }
+            else
+            {
+                // Either icons are switched off or the texture is still loading;
+                // the flat tile keeps the HUD readable either way.
+                var iconColor = ImGui.GetColorU32(new Vector4(ColorFor(debuff.Kind), 0.92f));
+                drawList.AddRectFilled(iconMin, iconMax, iconColor, 4 * scale);
+                drawList.AddRect(iconMin, iconMax, iconBorder, 4 * scale);
+                DrawCenteredText(drawList, debuff.ShortLabel, iconMin, iconSize, textColor, -5 * scale);
+            }
 
-            DrawCenteredText(drawList, debuff.ShortLabel, iconMin, iconSize, textColor, -5 * scale);
             if (configuration.StatusTimerText)
             {
                 var remaining = FormatRemaining(debuff.RemainingAt(context.SimulationTime));

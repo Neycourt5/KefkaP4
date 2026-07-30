@@ -48,9 +48,13 @@ internal sealed class ArenaOverlayRenderer
             var time = engine.Clock.Time;
             var activeShapes =
                 engine.Encounter.ActiveShapes(time, configuration.TelegraphLeadTime);
-            var requiredPosition = configuration.ShowSafeZones
-                ? engine.Encounter.RequiredPositionShape(time)
-                : null;
+            // The guide needs this shape even when the filled safe-zone circle is
+            // switched off. ShapeRenderer.Draw still self-gates on ShowSafeZones,
+            // so fetching it here does not make the circle itself appear.
+            var requiredPosition =
+                configuration.ShowSafeZones || configuration.ShowDestinationGuide
+                    ? engine.Encounter.RequiredPositionShape(time)
+                    : null;
             DrawCore(
                 arena,
                 activeShapes,
@@ -227,9 +231,85 @@ internal sealed class ArenaOverlayRenderer
             DrawGazeAids(foreground, arena, player, activeGhosts, configuration);
         }
 
+        if (requiredPosition is not null && configuration.ShowDestinationGuide)
+        {
+            DrawDestinationGuide(
+                foreground,
+                arena,
+                requiredPosition,
+                player,
+                time,
+                configuration);
+        }
+
         if (configuration.ShowDebugCoordinateLabels)
         {
             DrawCoordinateLabels(foreground, arena, configuration);
+        }
+    }
+
+    /// <summary>
+    /// Emphasises where the player should be standing. The required-position
+    /// circle is otherwise drawn in the same flat style as every hazard, which
+    /// makes the one shape you need to act on the easiest one to lose.
+    /// </summary>
+    private void DrawDestinationGuide(
+        ImDrawListPtr drawList,
+        ArenaTransform arena,
+        ArenaShape destination,
+        PlayerState player,
+        double time,
+        Configuration configuration)
+    {
+        var height = Math.Clamp(configuration.GroundHeightOffset, -2, 2);
+        var thickness = Math.Clamp(configuration.LineThickness, 1, 8);
+        var segments = Math.Clamp(configuration.CurveSegments, 8, 192);
+        var radius = MathF.Max(destination.Radius, 0.5f);
+        var arrived = player.IsValid
+            && Vector2.Distance(player.ArenaPosition, destination.Origin) <= radius;
+
+        // Pulsing separates the destination from the static telegraph fills. The
+        // colour goes solid green on arrival so "am I there yet" is answerable
+        // without reading the distance.
+        var pulse = 0.55f + (0.45f * MathF.Sin((float)time * 5));
+        var color = arrived
+            ? ImGui.GetColorU32(new Vector4(0.20f, 0.95f, 0.45f, 0.95f))
+            : ImGui.GetColorU32(new Vector4(0.35f, 1.00f, 0.85f, pulse));
+
+        shapes.DrawEmphasisRing(
+            drawList, arena, destination.Origin, radius, segments, height, color, thickness + 2);
+        shapes.DrawEmphasisRing(
+            drawList, arena, destination.Origin, radius * 0.45f, segments, height, color, thickness);
+
+        if (!player.IsValid || arrived)
+        {
+            return;
+        }
+
+        var toDestination = destination.Origin - player.ArenaPosition;
+        var distance = toDestination.Length();
+        var direction = Geometry.SafeNormalize(toDestination);
+
+        if (configuration.ShowDestinationPath)
+        {
+            // Stop at the ring edge rather than the centre so the arrowhead does
+            // not sit on top of the inner ring.
+            var tip = destination.Origin - (direction * radius);
+            DrawArenaSegment(
+                drawList, arena, player.ArenaPosition, tip, height, color, thickness + 1);
+            foreach (var sign in stackalloc[] { -1f, 1f })
+            {
+                var barb = Geometry.RotateDegrees(-direction, sign * 30);
+                DrawArenaSegment(
+                    drawList, arena, tip, tip + (barb * 1.8f), height, color, thickness + 1);
+            }
+        }
+
+        if (configuration.ShowDestinationDistance)
+        {
+            var midpoint = player.ArenaPosition + (direction * distance * 0.5f);
+            shapes.DrawWorldLabel(
+                drawList, arena, midpoint, $"{distance:0.0}m", height, color);
         }
     }
 

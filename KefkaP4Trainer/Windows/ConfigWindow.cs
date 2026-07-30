@@ -250,6 +250,34 @@ internal sealed class ConfigWindow : Window
             changed = true;
         }
 
+        var destinationGuide = config.ShowDestinationGuide;
+        if (ImGui.Checkbox("Highlight where to stand", ref destinationGuide))
+        {
+            config.ShowDestinationGuide = destinationGuide;
+            changed = true;
+        }
+
+        if (config.ShowDestinationGuide)
+        {
+            ImGui.Indent();
+
+            var destinationPath = config.ShowDestinationPath;
+            if (ImGui.Checkbox("Draw path arrow to destination", ref destinationPath))
+            {
+                config.ShowDestinationPath = destinationPath;
+                changed = true;
+            }
+
+            var destinationDistance = config.ShowDestinationDistance;
+            if (ImGui.Checkbox("Show distance to destination", ref destinationDistance))
+            {
+                config.ShowDestinationDistance = destinationDistance;
+                changed = true;
+            }
+
+            ImGui.Unindent();
+        }
+
         var boundary = config.ShowArenaBoundary;
         if (ImGui.Checkbox("Show arena boundary", ref boundary))
         {
@@ -305,6 +333,20 @@ internal sealed class ConfigWindow : Window
         {
             config.StatusIconSpacing = spacing;
             changed = true;
+        }
+
+        var gameIcons = config.UseGameStatusIcons;
+        if (ImGui.Checkbox("Use real game status icons", ref gameIcons))
+        {
+            config.UseGameStatusIcons = gameIcons;
+            changed = true;
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "Draws the actual in-game icon for each simulated status.\n"
+                + "Falls back to lettered colour tiles while an icon loads.");
         }
 
         var timers = config.StatusTimerText;

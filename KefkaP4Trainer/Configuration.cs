@@ -58,6 +58,15 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool ShowSafeZones { get; set; }
 
+    // Destination guidance. Unlike the gaze aids below this is on by default:
+    // it emphasises a position the encounter already knows, and without it the
+    // required-position circle is drawn identically to every hazard telegraph.
+    public bool ShowDestinationGuide { get; set; } = true;
+
+    public bool ShowDestinationPath { get; set; } = true;
+
+    public bool ShowDestinationDistance { get; set; } = true;
+
     public bool ShowArenaBoundary { get; set; } = true;
 
     public bool ShowDebugCoordinateLabels { get; set; }
@@ -110,6 +119,8 @@ public sealed class Configuration : IPluginConfiguration
     public bool SortStatusesLikeSource { get; set; } = true;
 
     public bool ShowStatusDebugValues { get; set; }
+
+    public bool UseGameStatusIcons { get; set; } = true;
 
     public bool MainWindowVisibleAfterStart { get; set; }
 

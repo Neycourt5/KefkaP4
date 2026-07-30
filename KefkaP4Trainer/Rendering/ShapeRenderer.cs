@@ -164,6 +164,32 @@ internal sealed class ShapeRenderer
         }
     }
 
+    /// <summary>
+    /// Draws an unfilled ring at an explicit colour and thickness, bypassing the
+    /// phase palette and the <see cref="Configuration.ShowSafeZones"/> gate that
+    /// <see cref="Draw"/> applies. Used to pick the destination out from the
+    /// hazard telegraphs it sits among.
+    /// </summary>
+    public void DrawEmphasisRing(
+        ImDrawListPtr drawList,
+        ArenaTransform arena,
+        Vector2 center,
+        float radius,
+        int segments,
+        float heightOffset,
+        uint color,
+        float thickness) =>
+        DrawCircle(
+            drawList,
+            arena,
+            center,
+            radius,
+            Math.Clamp(segments, 8, 192),
+            heightOffset,
+            0,
+            color,
+            thickness);
+
     public void DrawWorldLabel(
         ImDrawListPtr drawList,
         ArenaTransform arena,
