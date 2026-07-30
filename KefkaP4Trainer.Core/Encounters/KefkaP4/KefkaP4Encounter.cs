@@ -218,19 +218,9 @@ public sealed class KefkaP4Encounter
 
     public string CurrentCue(double time)
     {
-        if (time is >= 3.3 and < 8.0)
+        if (CurrentMagicTell(time) is { } tell)
         {
-            return MagicCue(Assignments.MagicPatterns[0], "Mysterious Magic");
-        }
-
-        if (time is >= 18.2 and < 22.9)
-        {
-            return MagicCue(Assignments.MagicPatterns[1], "Mysterious Magic");
-        }
-
-        if (time is >= 33.4 and < 38.1)
-        {
-            return MagicCue(Assignments.MagicPatterns[2], "Mysterious Magic");
+            return tell.CueText;
         }
 
         if (time is >= 49.7 and < 55)
@@ -239,24 +229,70 @@ public sealed class KefkaP4Encounter
                 + $"Black {(Assignments.BlackWest ? "West" : "East")}";
         }
 
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// The real/fake advertisement for the magic cast on screen at
+    /// <paramref name="time"/>, or null outside those windows.
+    /// </summary>
+    /// <remarks>
+    /// Shares its windows with <see cref="CurrentCue"/> so the readable badges and
+    /// the cue text can never disagree about whether an element is inverted.
+    /// </remarks>
+    public MagicTell? CurrentMagicTell(double time)
+    {
+        if (time is >= 3.3 and < 8.0)
+        {
+            return MysteriousMagicTell(Assignments.MagicPatterns[0]);
+        }
+
+        if (time is >= 18.2 and < 22.9)
+        {
+            return MysteriousMagicTell(Assignments.MagicPatterns[1]);
+        }
+
+        if (time is >= 33.4 and < 38.1)
+        {
+            return MysteriousMagicTell(Assignments.MagicPatterns[2]);
+        }
+
         var final = Assignments.MagicPatterns[3];
         if (time is >= 66.7 and < 71.4)
         {
-            return $"Thunder: {(final.ThunderFake ? "Fake" : "Real")}";
+            return new MagicTell(
+                "Thrumming Thunder",
+                HasThunder: true,
+                final.ThunderFake,
+                HasIce: false,
+                IceFake: false,
+                $"Thunder: {FakeWord(final.ThunderFake)}");
         }
 
         if (time is >= 84.7 and < 89.4)
         {
-            return $"Ice: {(final.IceFake ? "Fake" : "Real")}";
+            return new MagicTell(
+                "Blizzard Blowout",
+                HasThunder: false,
+                ThunderFake: false,
+                HasIce: true,
+                final.IceFake,
+                $"Ice: {FakeWord(final.IceFake)}");
         }
 
         if (time is >= 95.9 and < 107.5)
         {
-            return $"Mana Release — Thunder {(Assignments.ManaReleaseThunderFake ? "Fake" : "Real")}, "
-                + $"Ice {(Assignments.ManaReleaseIceFake ? "Fake" : "Real")}";
+            return new MagicTell(
+                "Mana Release",
+                HasThunder: true,
+                Assignments.ManaReleaseThunderFake,
+                HasIce: true,
+                Assignments.ManaReleaseIceFake,
+                $"Mana Release — Thunder {FakeWord(Assignments.ManaReleaseThunderFake)}, "
+                + $"Ice {FakeWord(Assignments.ManaReleaseIceFake)}");
         }
 
-        return string.Empty;
+        return null;
     }
 
     private static bool IsResolution(TimelineEventKind kind) => kind is
@@ -1033,7 +1069,15 @@ public sealed class KefkaP4Encounter
             time,
             duration <= 0 ? double.PositiveInfinity : time + duration));
 
-    private static string MagicCue(MagicPattern pattern, string name) =>
-        $"{name} — Thunder {(pattern.ThunderFake ? "Fake" : "Real")}, "
-        + $"Ice {(pattern.IceFake ? "Fake" : "Real")}";
+    private static MagicTell MysteriousMagicTell(MagicPattern pattern) =>
+        new(
+            "Mysterious Magic",
+            HasThunder: true,
+            pattern.ThunderFake,
+            HasIce: true,
+            pattern.IceFake,
+            $"Mysterious Magic — Thunder {FakeWord(pattern.ThunderFake)}, "
+            + $"Ice {FakeWord(pattern.IceFake)}");
+
+    private static string FakeWord(bool fake) => fake ? "Fake" : "Real";
 }

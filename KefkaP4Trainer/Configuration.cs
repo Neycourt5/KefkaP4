@@ -67,6 +67,13 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool ShowDestinationDistance { get; set; } = true;
 
+    // Real/fake badges over the boss. On by default: the telegraphs for a real
+    // and a fake cast are drawn identically, so without this the element flips
+    // are unreadable rather than merely difficult.
+    public bool ShowMagicTell { get; set; } = true;
+
+    public float MagicTellScale { get; set; } = 1;
+
     public bool ShowArenaBoundary { get; set; } = true;
 
     public bool ShowDebugCoordinateLabels { get; set; }

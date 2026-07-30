@@ -278,6 +278,34 @@ internal sealed class ConfigWindow : Window
             ImGui.Unindent();
         }
 
+        var magicTell = config.ShowMagicTell;
+        if (ImGui.Checkbox("Show real/fake badges over Kefka", ref magicTell))
+        {
+            config.ShowMagicTell = magicTell;
+            changed = true;
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "Thunder and ice are flagged independently. A '?' badge means that\n"
+                + "element resolves as the opposite of the orientation it telegraphs,\n"
+                + "matching the question-mark orbs on the rings around Kefka.");
+        }
+
+        if (config.ShowMagicTell)
+        {
+            ImGui.Indent();
+            var tellScale = config.MagicTellScale;
+            if (ImGui.SliderFloat("Badge size", ref tellScale, 0.5f, 3, "%.2fx"))
+            {
+                config.MagicTellScale = tellScale;
+                changed = true;
+            }
+
+            ImGui.Unindent();
+        }
+
         var boundary = config.ShowArenaBoundary;
         if (ImGui.Checkbox("Show arena boundary", ref boundary))
         {

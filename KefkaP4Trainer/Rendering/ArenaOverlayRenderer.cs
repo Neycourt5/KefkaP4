@@ -64,7 +64,8 @@ internal sealed class ArenaOverlayRenderer
                 engine.PlayerRole,
                 Combine(engine.Encounter.ActiveGhosts(time), testGhosts),
                 time,
-                configuration);
+                configuration,
+                configuration.ShowMagicTell ? engine.Encounter.CurrentMagicTell(time) : null);
         }
         catch (Exception exception)
         {
@@ -148,7 +149,8 @@ internal sealed class ArenaOverlayRenderer
         PartyRole? playerRole,
         IReadOnlyList<SimulatedGhost> activeGhosts,
         double time,
-        Configuration configuration)
+        Configuration configuration,
+        MagicTell? magicTell = null)
     {
         if (!configuration.OverlayEnabled || !arena.IsInitialized)
         {
@@ -242,10 +244,133 @@ internal sealed class ArenaOverlayRenderer
                 configuration);
         }
 
+        if (magicTell is { } tell)
+        {
+            DrawMagicTell(foreground, arena, tell, configuration);
+        }
+
         if (configuration.ShowDebugCoordinateLabels)
         {
             DrawCoordinateLabels(foreground, arena, configuration);
         }
+    }
+
+    /// <summary>
+    /// Mirrors the orbs on the rings around Kefka, where a question mark means
+    /// that element resolves as the opposite of the orientation it telegraphs.
+    /// </summary>
+    /// <remarks>
+    /// The telegraphs themselves are drawn identically whether or not a pattern
+    /// is fake, so without this badge the flip carries no on-screen tell at all
+    /// and the mechanic degrades into a coin flip per element.
+    /// </remarks>
+    private void DrawMagicTell(
+        ImDrawListPtr drawList,
+        ArenaTransform arena,
+        MagicTell tell,
+        Configuration configuration)
+    {
+        var count = (tell.HasThunder ? 1 : 0) + (tell.HasIce ? 1 : 0);
+        if (count == 0)
+        {
+            return;
+        }
+
+        // Anchored to the arena centre, which is where Kefka casts from, so the
+        // habit this builds is "look at the boss" rather than "look at my HUD".
+        var height = Math.Clamp(configuration.GroundHeightOffset, -2, 2);
+        var anchor = projection.Project(arena.SimulatorToWorld(Vector2.Zero, height));
+        if (!anchor.Succeeded || !anchor.InView)
+        {
+            return;
+        }
+
+        var scale = Math.Clamp(configuration.MagicTellScale, 0.5f, 3);
+        var radius = 26 * scale;
+        var gap = 20 * scale;
+        var step = (radius * 2) + gap;
+        var totalWidth = (count * radius * 2) + ((count - 1) * gap);
+
+        // Lifted clear of the boss so the badges do not sit on the cast bar.
+        var origin = anchor.ScreenPosition
+            - new Vector2(totalWidth * 0.5f, (radius * 2) + (90 * scale));
+
+        var slot = 0;
+        if (tell.HasThunder)
+        {
+            DrawTellBadge(
+                drawList,
+                origin + new Vector2((slot++ * step) + radius, radius),
+                radius,
+                "THUNDER",
+                tell.ThunderFake);
+        }
+
+        if (tell.HasIce)
+        {
+            DrawTellBadge(
+                drawList,
+                origin + new Vector2((slot * step) + radius, radius),
+                radius,
+                "ICE",
+                tell.IceFake);
+        }
+
+        var caption = tell.Label;
+        var captionSize = ImGui.CalcTextSize(caption);
+        var captionPosition = new Vector2(
+            anchor.ScreenPosition.X - (captionSize.X * 0.5f),
+            origin.Y - captionSize.Y - (6 * scale));
+        DrawShadowedText(
+            drawList,
+            caption,
+            captionPosition,
+            ImGui.GetColorU32(new Vector4(0.90f, 0.93f, 1.00f, 1)));
+    }
+
+    private static void DrawTellBadge(
+        ImDrawListPtr drawList,
+        Vector2 center,
+        float radius,
+        string element,
+        bool fake)
+    {
+        var accent = fake
+            ? new Vector4(1.00f, 0.45f, 0.10f, 1)
+            : new Vector4(0.30f, 0.85f, 1.00f, 1);
+        var accentColor = ImGui.GetColorU32(accent);
+        var textColor = ImGui.GetColorU32(new Vector4(1, 1, 1, 1));
+
+        drawList.AddCircleFilled(
+            center, radius, ImGui.GetColorU32(new Vector4(0.03f, 0.04f, 0.07f, 0.90f)), 32);
+        drawList.AddCircle(center, radius, accentColor, 32, MathF.Max(2, radius * 0.16f));
+
+        // Only fake orbs carry the question mark in game; leaving real ones bare
+        // keeps the badge a rehearsal of the same read rather than a new symbol.
+        if (fake)
+        {
+            var glyphSize = ImGui.CalcTextSize("?");
+            DrawShadowedText(drawList, "?", center - (glyphSize * 0.5f), textColor);
+        }
+
+        var caption = $"{element} {(fake ? "FAKE" : "REAL")}";
+        var captionSize = ImGui.CalcTextSize(caption);
+        DrawShadowedText(
+            drawList,
+            caption,
+            center + new Vector2(-captionSize.X * 0.5f, radius + 4),
+            accentColor);
+    }
+
+    private static void DrawShadowedText(
+        ImDrawListPtr drawList,
+        string text,
+        Vector2 position,
+        uint color)
+    {
+        drawList.AddText(
+            position + Vector2.One, ImGui.GetColorU32(new Vector4(0, 0, 0, 0.9f)), text);
+        drawList.AddText(position, color, text);
     }
 
     /// <summary>
