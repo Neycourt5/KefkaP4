@@ -288,7 +288,7 @@ internal sealed class ConfigWindow : Window
         if (ImGui.IsItemHovered())
         {
             ImGui.SetTooltip(
-                "Thunder lines draw purple and ice cones blue, staying dim while\n"
+                "Lightning lines draw purple and ice cones blue, staying dim while\n"
                 + "telegraphed and brightening as they go live. Off returns both to\n"
                 + "the shared orange/red pair.");
         }
@@ -303,7 +303,7 @@ internal sealed class ConfigWindow : Window
         if (ImGui.IsItemHovered())
         {
             ImGui.SetTooltip(
-                "Thunder and ice are flagged independently. A '?' badge means that\n"
+                "Lightning and ice are flagged independently. A '?' badge means that\n"
                 + "element resolves as the opposite of the orientation it telegraphs,\n"
                 + "matching the question-mark orbs on the rings around Kefka.");
         }

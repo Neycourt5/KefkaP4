@@ -294,7 +294,7 @@ internal sealed class ArenaOverlayRenderer
         // thunder up around his head, ice down by his legs. Captions sit beside
         // each badge rather than under it, which is what ran them together when
         // the badges were side by side.
-        var thunderCaption = $"THUNDER {FakeWord(tell.ThunderFake)}";
+        var thunderCaption = $"LIGHTNING {FakeWord(tell.ThunderFake)}";
         var iceCaption = $"ICE {FakeWord(tell.IceFake)}";
         var captionWidth = 0f;
         if (tell.HasThunder)

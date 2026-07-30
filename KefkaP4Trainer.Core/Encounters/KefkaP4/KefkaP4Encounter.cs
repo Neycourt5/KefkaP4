@@ -266,7 +266,7 @@ public sealed class KefkaP4Encounter
                 final.ThunderFake,
                 HasIce: false,
                 IceFake: false,
-                $"Thunder: {FakeWord(final.ThunderFake)}");
+                $"Lightning: {FakeWord(final.ThunderFake)}");
         }
 
         if (time is >= 84.7 and < 89.4)
@@ -288,7 +288,7 @@ public sealed class KefkaP4Encounter
                 Assignments.ManaReleaseThunderFake,
                 HasIce: true,
                 Assignments.ManaReleaseIceFake,
-                $"Mana Release — Thunder {FakeWord(Assignments.ManaReleaseThunderFake)}, "
+                $"Mana Release — Lightning {FakeWord(Assignments.ManaReleaseThunderFake)}, "
                 + $"Ice {FakeWord(Assignments.ManaReleaseIceFake)}");
         }
 
@@ -1076,7 +1076,7 @@ public sealed class KefkaP4Encounter
             pattern.ThunderFake,
             HasIce: true,
             pattern.IceFake,
-            $"Mysterious Magic — Thunder {FakeWord(pattern.ThunderFake)}, "
+            $"Mysterious Magic — Lightning {FakeWord(pattern.ThunderFake)}, "
             + $"Ice {FakeWord(pattern.IceFake)}");
 
     private static string FakeWord(bool fake) => fake ? "Fake" : "Real";

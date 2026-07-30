@@ -514,7 +514,7 @@ internal sealed class DebugWindow : Window
             + $"Black {(assignments.BlackWest ? "West" : "East")}, "
             + $"Neo rotation {assignments.NeoRotationDegrees:0} deg");
         ImGui.TextUnformatted(
-            $"Mana Release: Thunder {(assignments.ManaReleaseThunderFake ? "Fake" : "Real")}, "
+            $"Mana Release: Lightning {(assignments.ManaReleaseThunderFake ? "Fake" : "Real")}, "
             + $"Ice {(assignments.ManaReleaseIceFake ? "Fake" : "Real")}");
 
         foreach (var role in PartyRoles.All)
