@@ -8,8 +8,10 @@
     <AssemblyTitle>Kefka P4 Trainer</AssemblyTitle>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- Enabled for AtkUnitBase.PlaySoundEffect; Dalamud exposes no sound API. -->
+    <!-- Enabled for AtkUnitBase.PlaySoundEffect; Dalamud exposes no sound API.
+         Reaching the addon means a raw pointer, hence unsafe blocks. -->
     <Use_Dalamud_FFXIVClientStructs>true</Use_Dalamud_FFXIVClientStructs>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Use_Dalamud_Newtonsoft_Json>false</Use_Dalamud_Newtonsoft_Json>
     <Use_Dalamud_Lumina>false</Use_Dalamud_Lumina>
     <Use_Dalamud_Lumina_Excel>false</Use_Dalamud_Lumina_Excel>

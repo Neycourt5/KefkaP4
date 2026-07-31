@@ -78,7 +78,7 @@ internal sealed class SoundCueService
     private bool Crossed(double moment, double time) =>
         moment > previousTime && moment <= time;
 
-    private void Play(int soundIndex)
+    private unsafe void Play(int soundIndex)
     {
         if (soundIndex <= 0)
         {
@@ -89,13 +89,10 @@ internal sealed class SoundCueService
         {
             // PlaySoundEffect lives on an addon rather than anywhere global, so
             // this borrows the chat log: it is loaded whenever the HUD is.
-            unsafe
+            var addon = (AtkUnitBase*)Services.GameGui.GetAddonByName("_ChatLog", 1);
+            if (addon is not null)
             {
-                var addon = (AtkUnitBase*)Services.GameGui.GetAddonByName("_ChatLog");
-                if (addon is not null)
-                {
-                    addon->PlaySoundEffect(soundIndex);
-                }
+                addon->PlaySoundEffect(soundIndex);
             }
         }
         catch (Exception exception)
