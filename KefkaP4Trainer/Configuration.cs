@@ -1,5 +1,6 @@
 using Dalamud.Configuration;
 using KefkaP4Trainer.Core;
+using KefkaP4Trainer.Core.Health;
 
 namespace KefkaP4Trainer;
 
@@ -211,6 +212,12 @@ public sealed class Configuration : IPluginConfiguration
     /// this keeps each mechanic's severity constant.
     /// </summary>
     public int HealerSimulatedMaximumHp { get; set; } = 148_000;
+
+    /// <summary>
+    /// How much the simulated co-healer does. Standard covers alternate
+    /// raidwides, leaving the ones in between to the real healer.
+    /// </summary>
+    public CoHealerAssistance CoHealerAssistance { get; set; } = CoHealerAssistance.Standard;
 
     public void Save() => Services.PluginInterface.SavePluginConfig(this);
 }

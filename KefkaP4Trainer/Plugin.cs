@@ -5,6 +5,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using KefkaP4Trainer.Core;
+using KefkaP4Trainer.Core.Health;
 using KefkaP4Trainer.Healing;
 using KefkaP4Trainer.Rendering;
 using KefkaP4Trainer.Windows;
@@ -370,6 +371,8 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
             soundCues.Update(Engine, Configuration);
             var pullBeforeUpdate = Engine.PullNumber;
             Engine.Update(elapsedSeconds, LastPlayer);
+            HealerPractice.PlayerJob = SimulatedJobs.FromRowId(
+                Services.ObjectTable.LocalPlayer?.ClassJob.RowId ?? 0);
             HealerPractice.Update(Engine, Configuration);
             if (Engine.PullNumber != pullBeforeUpdate)
             {

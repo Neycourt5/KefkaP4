@@ -45,6 +45,8 @@ internal sealed class HealerWindow : Window
         var configuration = host.Configuration;
 
         DrawModeControls(configuration);
+        Section("Co-healer");
+        DrawCoHealer(service, configuration);
         Section("Simulated party");
         DrawParty(service, host.Engine.Clock.Time);
         Section("Observation");
@@ -93,6 +95,91 @@ internal sealed class HealerWindow : Window
         ImGui.TextDisabled(
             $"Damage is scaled from a {DamageScaling.DefaultReferenceMaximumHp:N0} reference pool, "
             + "so severity holds as this changes.");
+    }
+
+    /// <summary>
+    /// Co-healer controls and what it is currently covering.
+    /// </summary>
+    /// <remarks>
+    /// Its contribution is never hidden: every shield, mitigation, regen and
+    /// heal it provides appears in the action log and the party history
+    /// attributed to "co-healer", and boss damage is never quietly reduced.
+    /// </remarks>
+    private void DrawCoHealer(HealerPracticeService service, Configuration configuration)
+    {
+        var job = service.PlayerJob;
+        var profile = job.Profile();
+
+        if (profile == HealerProfile.None)
+        {
+            ImGui.TextDisabled(
+                $"Your job ({job}) is not a healer, so no co-healer is offered.");
+            return;
+        }
+
+        ImGui.TextUnformatted(
+            $"You are {job} ({profile}). A {profile.Complement()} co-healer complements you.");
+
+        var level = configuration.CoHealerAssistance;
+        if (EnumCombo("Assistance", ref level))
+        {
+            configuration.CoHealerAssistance = level;
+            host.SaveConfiguration();
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "Minimal  - party mitigation on alternate raidwides only.\n"
+                + "Standard - adds a shield or party heal on those same raidwides.\n"
+                + "           The raidwides in between are yours.\n"
+                + "Strong   - covers every raidwide, plus regens and one emergency\n"
+                + "           heal on a long cooldown. This can carry the phase.");
+        }
+
+        if (service.CoHealer is not { } coHealer)
+        {
+            ImGui.TextDisabled("No co-healer active.");
+            return;
+        }
+
+        var settings = coHealer.Settings;
+        ImGui.TextUnformatted(
+            $"{coHealer.SourceName}: mitigation {Yes(settings.Mitigation)}, "
+            + $"core healing {Yes(settings.CoreHealing)}, regens {Yes(settings.Regens)}, "
+            + $"emergency {Yes(settings.EmergencyHealing)}");
+        ImGui.TextDisabled(
+            settings.CoverageStride <= 1
+                ? "Covering every raidwide."
+                : $"Covering one raidwide in {settings.CoverageStride}; the rest are yours.");
+    }
+
+    private static bool EnumCombo<T>(string label, ref T value)
+        where T : struct, Enum
+    {
+        var changed = false;
+        if (!ImGui.BeginCombo(label, value.ToString()))
+        {
+            return false;
+        }
+
+        foreach (var candidate in Enum.GetValues<T>())
+        {
+            var selected = EqualityComparer<T>.Default.Equals(candidate, value);
+            if (ImGui.Selectable(candidate.ToString(), selected))
+            {
+                value = candidate;
+                changed = true;
+            }
+
+            if (selected)
+            {
+                ImGui.SetItemDefaultFocus();
+            }
+        }
+
+        ImGui.EndCombo();
+        return changed;
     }
 
     private static void DrawParty(HealerPracticeService service, double time)

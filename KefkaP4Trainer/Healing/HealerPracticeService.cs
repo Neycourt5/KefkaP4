@@ -28,6 +28,8 @@ public sealed class HealerPracticeService
 
     private double previousTime = double.NegativeInfinity;
     private int previousPull = -1;
+    private SimulatedJob coHealerBuiltFor = SimulatedJob.Unknown;
+    private CoHealerAssistance coHealerBuiltAt = CoHealerAssistance.Disabled;
 
     public HealerPracticeService(IHealerActionObserver observer)
     {
@@ -42,6 +44,15 @@ public sealed class HealerPracticeService
 
     /// <summary>Damage events that have already resolved this pull.</summary>
     public IReadOnlyCollection<string> FiredDamageEvents => firedDamageEvents;
+
+    /// <summary>
+    /// The local player's job, pushed in from the game each tick. Decides which
+    /// profile the co-healer complements.
+    /// </summary>
+    public SimulatedJob PlayerJob { get; set; } = SimulatedJob.Unknown;
+
+    /// <summary>The simulated second healer, or null when there is none.</summary>
+    public VirtualCoHealer? CoHealer { get; private set; }
 
     public void Update(SimulationEngine engine, Configuration configuration)
     {
@@ -68,10 +79,24 @@ public sealed class HealerPracticeService
             return;
         }
 
+        SyncCoHealer(configuration);
+
         foreach (var action in Observer.Poll(time))
         {
             var applied = applier.Apply(Party, action, time);
             Append(new HealerLogEntry(action, applied.Recognised, applied.Summary));
+        }
+
+        // The co-healer runs through the same applier a real press does, so its
+        // shields and mitigation land before the damage it was scheduled for.
+        if (CoHealer is { } coHealer)
+        {
+            var events = KefkaP4DamageTable.For(engine.Encounter.Assignments.InfernoFirst);
+            foreach (var action in coHealer.Update(previousTime, time, Party, events))
+            {
+                var applied = applier.Apply(Party, action, time);
+                Append(new HealerLogEntry(action, applied.Recognised, applied.Summary));
+            }
         }
 
         Party.Advance(time);
@@ -96,8 +121,28 @@ public sealed class HealerPracticeService
     {
         Party.Reset(time);
         Observer.Reset();
+        CoHealer?.Reset();
         firedDamageEvents.Clear();
         log.Clear();
+    }
+
+    /// <summary>
+    /// Rebuilds the co-healer when the player's job or the assistance level
+    /// changes, and drops it when the player is not a healer.
+    /// </summary>
+    private void SyncCoHealer(Configuration configuration)
+    {
+        var level = configuration.CoHealerAssistance;
+        if (level == coHealerBuiltAt && PlayerJob == coHealerBuiltFor)
+        {
+            return;
+        }
+
+        coHealerBuiltAt = level;
+        coHealerBuiltFor = PlayerJob;
+        CoHealer = level == CoHealerAssistance.Disabled
+            ? null
+            : VirtualCoHealer.ComplementOf(PlayerJob, CoHealerSettings.For(level));
     }
 
     /// <summary>

@@ -40,6 +40,12 @@ public enum ObservationMethod
 
     /// <summary>Injected from the debug window. Never produced by the game.</summary>
     ManualInjection,
+
+    /// <summary>
+    /// Emitted by the simulated co-healer. Never produced by the game, and kept
+    /// distinct so its contribution can be attributed in the log.
+    /// </summary>
+    VirtualCoHealer,
 }
 
 public enum ObservationConfidence
@@ -91,6 +97,7 @@ public sealed record ObservedHealerAction
     public string DuplicateKey => $"{Method switch
     {
         ObservationMethod.ManualInjection => "manual",
+        ObservationMethod.VirtualCoHealer => "cohealer",
         _ => "game",
     }}:{ActionId}:{SourceName}";
 }
