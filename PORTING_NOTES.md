@@ -274,7 +274,7 @@ Audited 2026-07-31 against the local `Waju-Sims/` reference clone (upstream
 | Grand Cross 1/2 debuffs | `cast_gc`, `neo_debuffs` | `AssignGrandCross` | 12.6 / 27.6 | Ported | `AssignmentTests` |
 | Grand Cross 3 wounds | `neo_debuffs_3` | `AssignGrandCrossThree` | 44.0 | Ported | `FloodOfNaughtsTests` |
 | Chaos (Entropy/Dynamic Fluid) | `cast_chaos`, `chaos_debuffs` | `AssignChaos` | 18.4 / 34.4 | Ported | — |
-| **Flood of Naughts** | `flood_cast`, `move_flood_dodge`, `flood_hit`, GC3 setup block | `AddFloodHalf`, `MoveFlood`, `ResolveFlood`, `FloodBriefing` | 55.0 | **Verified** | `FloodOfNaughtsTests` (8-row truth table + all 8 rotations) |
+| **Flood of Naughts** | `flood_cast`, `move_flood_dodge`, `flood_hit`, GC3 setup, `neo_exdeath.tscn` | `FloodResolution`, `FloodStage`, `AddFloodHalf`, `MoveFlood`, `ResolveFlood` | 55.0 | **Logic verified; icon and colour NOT proven** | `FloodOfNaughtsTests`, `FloodVisualMappingTests` - see the per-layer table below |
 | Short/Long GC debuffs | `move_short_debuff`, `short_debuff_hit`, `long_debuff_hit` | `MoveShortDebuffs`, `ResolveDebuffs` | 63.8 / 88.7 | Ported | `MechanicSemanticsTests` |
 | Acceleration Bomb | `short_debuff_hit` velocity check | `PlayerState.IsMoving` | 63.8 / 88.7 | Verified | `MechanicSemanticsTests` (strict 0.1 boundary) |
 | Thrumming Thunder III | `cast_tt`, `move_tt_dodge`, `tt_hit` | `*ThrummingThunder` | 71.4 | Ported | — |
@@ -358,6 +358,113 @@ the cue, the failure text and the debug panel from the same value.
   `RequiredPosition` instead. The renderer skips the player's key, so this is
   harmless on screen, but any consumer iterating the dictionary must exclude
   `PlayerRole` or it will read a stale point.
-- `Waju-Sims/DalamudPlugin/` inside the reference clone is a **stale copy of
-  this plugin** from 2026-07-30 (pre-`v0.1.1.0`). It is not the build source.
-  The authoritative tree is the repository root. Do not edit it.
+- `Waju-Sims/DalamudPlugin/` used to hold a stale 2026-07-30 copy of this
+  plugin and was a standing trap for anyone following a `DalamudPlugin/...`
+  path. It was deleted on 2026-07-31. The authoritative tree is, and always
+  was, the repository root; the layout here is flat.
+
+### Flood of Naughts: parity by layer
+
+The earlier note called Flood "Verified". That was overstated: only the control
+flow and the assignment had been checked. Parity is now tracked per layer,
+because a correct boolean rule can still be presented unreadably.
+
+| Layer | Status | Evidence |
+| --- | --- | --- |
+| Control flow | **Verified** | `flood_cast` / `move_flood_dodge` / `flood_hit` traced to `KefkaP4Encounter`; all 50 timeline events pinned |
+| Assignment | **Verified** | 16-row truth table, `FloodVisualMappingTests.SemanticTruthTable` |
+| Geometry (sides) | **Verified** | `DrawnHalvesAndGradedRegionAgreeForEverySeedAndRole`, all 8 rotations |
+| Grading | **Verified** | strict `>0` / `<0` boundary, centre-line case pinned |
+| Stage placement | **Verified** | `FloodStage` transcribed from `neo_move_fade_in` + `neo_exdeath.tscn`; banner-side test at all rotations |
+| **Icon resources** | **Not proven** | ids now resolved from the Status sheet by name; needs one launch to read the atlas |
+| **Visual colour** | **Not proven** | Waju's `flood1.png` / `flood2.png` are absent from the clone; blue/purple assignment is inferred |
+| In-game | **Not done** | nothing has run in FFXIV |
+
+### Waju files inspected
+
+- `scenes/dmu/p4/p4_seq.gd` — assignment block, `flood_cast`, `flood_hit`, `move_flood_dodge`
+- `scenes/dmu/p4/p4_main.tscn` — `p4_anim` method tracks
+- `scenes/dmu/p4/enemies/neo_exdeath.gd` — `show_antilight`, `show_orbs`
+- `scenes/dmu/p4/enemies/neo_exdeath.tscn` — Antilight nodes, meshes, materials, textures
+
+### The Antilight stage, from source
+
+`neo_move_fade_in` puts Neo at `NEO_EXDEATH_NORTH = Vector2(0, -47)` rotated by
+`neo_rotation_deg` — the arena's north edge at the full 47-unit radius — at
+height 3.25, facing `-neo_rotation_deg`.
+
+`neo_exdeath.tscn` parents two 10x10 billboard quads to Neo:
+
+| Node | Local transform | Mesh | Material | Texture |
+| --- | --- | --- | --- | --- |
+| `WhiteAntilight` | X **-17**, Y 6.5, Z 5 | `QuadMesh_kxawg` | `StandardMaterial3D_qlrld` | `flood1.png` |
+| `BlackAntilight` | X **+17**, Y 6.5, Z 5 | `QuadMesh_eslhv` | `StandardMaterial3D_tei8n` | `flood2.png` |
+
+`show_antilight(black_west)` only *repositions* when `black_west` is true, so
+the scene defaults above are the **black-east** case: White west, Black east.
+That is consistent with the grader and with `move_flood_dodge`.
+
+### Colour: what the source does and does not say
+
+Both materials carry the **same** emission, `Color(0.054, 0, 0.069)` — a purple
+tint — and near-identical albedo. The only thing distinguishing them is the
+texture, and `waju-sim/assets/` **does not exist in the reference clone**.
+
+So the source cannot tell us which Antilight reads blue and which reads purple.
+The plugin's mapping is therefore **inferred**:
+
+- Black Antilight → **purple**
+- White Antilight → **blue**
+
+on the reading that "black" is the darker of the pair, matching the colours this
+plugin already used for the two halves and the user's report that the encounter
+shows a blue and a purple indicator on Exdeath. `FloodColors` is the single
+place this is decided, and `Configuration.SwapAntilightColors` flips it if a
+look in game shows the opposite — no other code changes.
+
+### Was anything reversed?
+
+Checked and **not** reversed: the wound-to-safe-set rule, the safe-set-to-side
+selection, east/west orientation, the bot destinations, and the rendered versus
+graded rectangles (asserted equal for 120 seeds x 8 roles x 8 rotations).
+
+**Unproven and the likeliest remaining culprit:** the status icon ids. They were
+hand-written (`215782` White Wound, `215783` Black Wound, `215780` Beyond Death,
+`215590` Allagan Field) with a comment asserting they were unambiguous. That was
+an assertion, not a verification, and the reported screenshot — debug naming
+"White Wound, Beyond Death" while the player saw two purple icons — is exactly
+what a transposed pair looks like. Ids are now resolved from the Status sheet by
+**name**, with the old table demoted to a fallback and every row shown in a
+debug atlas.
+
+### The reported case
+
+Flood REAL, Black East, White Wound, Beyond Death.
+
+White wound + Beyond Death + real is `(i>=4) == flood_fake` → `true == false` →
+false → white-safe. Required: **White Antilight**, drawn **blue**, on the
+**WEST** (black being east). Because the wound is also White, this is a
+**same-colour** case.
+
+The player reasoned "same colour, take purple" and went to the purple line. The
+*reasoning* was right — the wound was misread. Both readings are pinned:
+
+- `ReportedWhiteWoundBeyondDeathRealBlackEastCase`
+- `ReportedCaseAsThePlayerReadItWouldHaveBeenPurpleEast`
+
+Root cause is therefore split in two, and both halves are addressed: the icon
+layer was untrustworthy (now resolved by name and auditable), and the cue named
+an internal Black/White label the player had to translate under a 5.3s cast (now
+leads with colour and side).
+
+### Presentation changes
+
+Cue format: `Flood REAL: WEST - BLUE line (White Antilight)`
+
+Failure: `wrong Antilight: needed BLUE WEST (White Antilight), stood in PURPLE EAST`
+
+Overlay: the two halves are drawn in real blue and purple and labelled
+`PURPLE Black Antilight (EAST)`. A Neo Exdeath stand-in is drawn at the arena
+edge from 47.5s with a REAL/FAKE ring, and from 49.7s the two Antilight banners
+sit beside it at local X ±17 in their own colours, the required one ringed in
+white and tagged `<- GO HERE`.

@@ -433,3 +433,83 @@ IN-GAME CHECKLIST, in priority order:
   [8] Element tells: confirm lightning at Kefka's shoulders and ice at his
       knees, and that the gap survives pitching the camera down. Tune
       Settings -> Lightning/Ice height if the defaults miss the model.
+
+
+====================================================================
+2026-07-31 (session 3)  Flood visual-semantic mapping audit
+====================================================================
+
+REOPENED Flood of Naughts. The previous "Verified" was overstated: only control
+flow and assignment had been checked, never the icon or colour layer.
+
+WAJU FILES INSPECTED
+  scenes/dmu/p4/p4_seq.gd                    assignment, flood_cast/hit, move_flood_dodge
+  scenes/dmu/p4/p4_main.tscn                 p4_anim method tracks
+  scenes/dmu/p4/enemies/neo_exdeath.gd       show_antilight, show_orbs
+  scenes/dmu/p4/enemies/neo_exdeath.tscn     Antilight nodes/meshes/materials/textures
+
+STAGE GEOMETRY (new)
+  NEO_EXDEATH_NORTH = Vector2(0, -47) rotated by neo_rotation_deg, height 3.25.
+  WhiteAntilight local X -17, BlackAntilight local X +17, both Y 6.5 Z 5.
+  show_antilight() only REPOSITIONS when black_west is true, so the scene
+  defaults (White west / Black east) are the black-east case. Consistent with
+  the grader and with move_flood_dodge.
+
+COLOUR: UNPROVABLE FROM SOURCE
+  Both Antilight materials carry the SAME emission Color(0.054, 0, 0.069) and
+  differ only by texture (flood1.png White / flood2.png Black). waju-sim/assets/
+  does not exist in the clone, so the pixels cannot be inspected.
+  Mapping is INFERRED: Black -> purple, White -> blue. Single decision point is
+  FloodColors; Configuration.SwapAntilightColors flips it.
+
+WHAT WAS AND WAS NOT REVERSED
+  Not reversed: wound->safe-set rule, safe-set->side, east/west, bot
+  destinations, and rendered vs graded rectangles (asserted for 120 seeds x 8
+  roles x 8 rotations).
+  Unproven, likeliest culprit: the hand-written status icon ids. Now resolved
+  from the Status sheet BY NAME with the old table demoted to a fallback, every
+  row audited, and a debug icon atlas added.
+
+SCREENSHOT CASE RESOLVED
+  Flood REAL / Black East / White Wound / Beyond Death
+    -> white-safe -> White Antilight -> BLUE -> WEST. SAME-colour case.
+  The player's "same colour" reasoning was CORRECT; the wound icon was misread.
+  Pinned as ReportedWhiteWoundBeyondDeathRealBlackEastCase and
+  ReportedCaseAsThePlayerReadItWouldHaveBeenPurpleEast.
+
+CHANGES
+  FloodResolution        one typed object read by cue, overlay, debug, grader
+  FloodStage/StageView   Neo + banner geometry from source
+  FloodStageRenderer     Neo stand-in at the arena edge, REAL/FAKE ring, two
+                         big blue/purple banners, required one ringed white
+  ShapeRenderer          halves drawn in real blue/purple, keyed off the label
+  StatusIconProvider     ids resolved by status name; audit + atlas
+  DebugWindow            icon atlas, manual 16-combination Flood selector
+  Configuration          SwapAntilightColors, ShowFloodStage, FloodStageScale
+
+TESTS   213/213 (was 180; 33 new in FloodVisualMappingTests)
+BUILD   0 Warning(s) 0 Error(s), TreatWarningsAsErrors, Dalamud 15.0.3
+COMMITS 170ebf0 fix: resolve Flood into one typed object with visible colours
+        035a698 fix: resolve status icons by name instead of hardcoded ids
+PUSH    a1e6f0b..035a698 main -> main
+
+NOT DONE THIS SESSION
+  Co-healer, remaining parity fixtures, audio audit, Lumina healer-id report,
+  native party-list/debuff-bar anchoring, multiplayer. Flood took the session.
+
+IN-GAME CHECKLIST (Flood, highest value first)
+  [1] /kefkap4 debug -> "Status icon atlas". Read it FIRST. If White/Black Wound
+      or Field/Death look transposed, the sheet lookup has already fixed the ids
+      and the atlas will say so; if the atlas looks right but the icons still
+      read wrong to you, the colours are the problem, not the ids.
+  [2] Same window -> "Flood of Naughts" -> tick "Override assignment" and press
+      "Cycle all 16 combinations". Confirm every row's required side/colour
+      reads sensibly and matches the two banner labels.
+  [3] Scrub to ~50s. Confirm exactly ONE blue and ONE purple line, that Neo's
+      stand-in and its two banners appear at the arena edge, and that the
+      required banner is the white-ringed one tagged GO HERE.
+  [4] Confirm the banner colours match what Exdeath actually shows in game. If
+      blue and purple are the other way round, tick Settings ->
+      "Swap Antilight colours"; nothing else needs changing.
+  [5] Walk across the centre line and confirm Would PASS/FAIL flips and names
+      both the needed and the taken colour.
