@@ -1,6 +1,7 @@
 using System.Numerics;
 using KefkaP4Trainer.Core;
 using KefkaP4Trainer.Healing;
+using KefkaP4Trainer.Rendering;
 
 namespace KefkaP4Trainer.Windows;
 
@@ -33,6 +34,9 @@ internal interface ITrainerWindowHost
 
     /// <summary>The simulated party and healer-observation pipeline.</summary>
     HealerPracticeService HealerPractice { get; }
+
+    /// <summary>Status icon resolution detail, for the debug atlas.</summary>
+    StatusIconProvider StatusIcons { get; }
 
     /// <summary>
     /// Developer-spawned ghosts used to verify projection and facing in game.

@@ -127,6 +127,8 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
 
     public HealerPracticeService HealerPractice { get; }
 
+    public StatusIconProvider StatusIcons => statusHudRenderer.Icons;
+
     public void Dispose()
     {
         if (disposed)

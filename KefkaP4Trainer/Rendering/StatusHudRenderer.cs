@@ -26,6 +26,9 @@ internal sealed class StatusHudRenderer
 
     private readonly RenderExceptionLogger errors;
     private readonly StatusIconProvider icons;
+
+    /// <summary>The resolved icon table, for the debug atlas.</summary>
+    public StatusIconProvider Icons => icons;
     private bool positionDirty;
     private DateTime positionChangedAtUtc;
 
@@ -33,6 +36,9 @@ internal sealed class StatusHudRenderer
     {
         errors = new RenderExceptionLogger(log, nameof(StatusHudRenderer));
         icons = new StatusIconProvider(textures);
+        // Resolved once, by name, so a transposed hardcoded id cannot silently
+        // show the wrong wound colour. See StatusIconProvider for why.
+        icons.ResolveFromGameData(Services.DataManager, Services.Log);
     }
 
     public void Draw(SimulationEngine engine, Configuration configuration)

@@ -43,6 +43,8 @@ internal sealed class DebugWindow : Window
         DrawGhostsAndGaze();
         Section("Simulated debuffs");
         DrawDebuffs();
+        Section("Status icon atlas");
+        DrawIconAtlas();
         Section("Flood of Naughts");
         DrawFloodDiagnostics();
         Section("Assignments");
@@ -515,6 +517,58 @@ internal sealed class DebugWindow : Window
     /// and the colour actually drawn are shown, because conflating those two is
     /// what makes this mechanic misread.
     /// </remarks>
+    /// <summary>
+    /// Every simulated debuff beside the icon actually drawn for it.
+    /// </summary>
+    /// <remarks>
+    /// A transposed White/Black wound pair, or a Field icon standing in for
+    /// Death, is invisible in code but obvious here: read the icon, read the
+    /// name under it, and any swap shows up immediately.
+    /// </remarks>
+    private void DrawIconAtlas()
+    {
+        var provider = host.StatusIcons;
+        var audit = provider.Audit;
+
+        if (audit.Count == 0)
+        {
+            ImGui.TextColored(
+                new Vector4(1, 0.55f, 0.25f, 1),
+                "Icon ids were not resolved from game data; hardcoded fallbacks are in use.");
+        }
+        else if (provider.Mismatches.Count == 0)
+        {
+            ImGui.TextColored(
+                new Vector4(0.35f, 0.95f, 0.45f, 1),
+                $"All {audit.Count} status icons resolved from the Status sheet by name.");
+        }
+        else
+        {
+            ImGui.TextColored(
+                new Vector4(1, 0.55f, 0.25f, 1),
+                $"{provider.Mismatches.Count} icon id(s) disagreed with the hardcoded table:");
+            foreach (var entry in provider.Mismatches)
+            {
+                ImGui.BulletText(entry.Summary);
+            }
+        }
+
+        foreach (var kind in Enum.GetValues<DebuffKind>())
+        {
+            var icon = provider.TryGet(kind);
+            if (icon is not null)
+            {
+                ImGui.Image(icon.Handle, new Vector2(32, 32));
+                ImGui.SameLine();
+            }
+
+            var row = audit.FirstOrDefault(entry => entry.Kind == kind);
+            ImGui.TextUnformatted(
+                $"{kind}  (icon {provider.IconIdFor(kind)})"
+                + (row is null ? string.Empty : $"  {row.Summary}"));
+        }
+    }
+
     private void DrawFloodDiagnostics()
     {
         var engine = host.Engine;
