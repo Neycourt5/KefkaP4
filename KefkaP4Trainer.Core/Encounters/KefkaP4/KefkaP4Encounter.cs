@@ -222,6 +222,19 @@ public sealed class KefkaP4Encounter
             : "Dynamic Fluid: real (stay near snapshots)";
     }
 
+    /// <summary>
+    /// The resolved Flood of Naughts instruction for <paramref name="role"/>.
+    /// Built from the same assignment sets <see cref="ResolveFlood"/> grades
+    /// against, so the briefing and the verdict cannot disagree.
+    /// </summary>
+    public FloodBriefing FloodBriefingFor(PartyRole role) =>
+        new(
+            Assignments.FloodFake,
+            Assignments.BlackWest,
+            Assignments.BlackWoundRoles.Contains(role),
+            Assignments.DeathRoles.Contains(role),
+            Assignments.BlackWest == Assignments.BlackSafeRoles.Contains(role));
+
     public string CurrentCue(double time)
     {
         if (CurrentMagicTell(time) is { } tell)
@@ -231,8 +244,10 @@ public sealed class KefkaP4Encounter
 
         if (time is >= 49.7 and < 55)
         {
-            return $"Flood: {(Assignments.FloodFake ? "Fake" : "Real")} / "
-                + $"Black {(Assignments.BlackWest ? "West" : "East")}";
+            // The side is stated outright. Deriving it in the moment needs the
+            // wound colour, the Field/Death icon and the fake flag at once, and
+            // "match your own colour" is wrong half the time.
+            return FloodBriefingFor(PlayerRole).Instruction;
         }
 
         return string.Empty;
@@ -487,12 +502,16 @@ public sealed class KefkaP4Encounter
 
         string? reason = BoundaryReason(player);
         var local = Geometry.RotateDegrees(player.ArenaPosition, -Assignments.NeoRotationDegrees);
-        var expectedWest = Assignments.BlackWest == Assignments.BlackSafeRoles.Contains(PlayerRole);
+        var briefing = FloodBriefingFor(PlayerRole);
+        var expectedWest = briefing.StandWest;
         if (reason is null
             && ((expectedWest && local.X > Geometry.Epsilon)
                 || (!expectedWest && local.X < -Geometry.Epsilon)))
         {
-            reason = "wrong Antilight side";
+            // Naming the required side makes a failed pull diagnosable without
+            // re-deriving the assignment from the icons afterwards.
+            reason = $"wrong Antilight side: needed {briefing.AntilightText} "
+                + $"({briefing.SideText})";
         }
 
         return Result("Flood of Naughts", time, reason, player, pullNumber);

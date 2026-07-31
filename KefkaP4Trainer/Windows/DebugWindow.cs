@@ -37,6 +37,8 @@ internal sealed class DebugWindow : Window
         DrawGhostsAndGaze();
         Section("Simulated debuffs");
         DrawDebuffs();
+        Section("Flood of Naughts");
+        DrawFloodDiagnostics();
         Section("Assignments");
         DrawAssignments();
         Section("Result history");
@@ -494,6 +496,72 @@ internal sealed class DebugWindow : Window
                         return $"{debuff.ShortLabel} "
                             + (double.IsPositiveInfinity(remaining) ? "inf" : $"{remaining:0.0}s");
                     })));
+        }
+    }
+
+    /// <summary>
+    /// Everything the Flood grader reads, in the order it reads it. The safe
+    /// side is not "your own colour": it also depends on the Field/Death icon
+    /// and the fake flag, so the derivation is spelled out rather than implied.
+    /// </summary>
+    private void DrawFloodDiagnostics()
+    {
+        var engine = host.Engine;
+        var encounter = engine.Encounter;
+        var assignments = encounter.Assignments;
+        var role = engine.PlayerRole;
+        var briefing = encounter.FloodBriefingFor(role);
+
+        ImGui.TextUnformatted(
+            $"Seed {assignments.Seed}  |  resolves at 55.0s  |  Neo rotation "
+            + $"{assignments.NeoRotationDegrees:0} deg");
+        ImGui.TextUnformatted(
+            $"Flood: {(briefing.FloodFake ? "FAKE" : "REAL")}  |  Black is "
+            + $"{(briefing.BlackWest ? "West" : "East")}");
+        ImGui.TextUnformatted(
+            $"{role.Key()}: {briefing.WoundText} Wound + {briefing.SecondaryText}");
+
+        ImGui.TextColored(
+            new Vector4(0.85f, 0.75f, 1, 1),
+            $"Required: {briefing.Instruction}");
+        ImGui.TextWrapped(briefing.Explanation);
+
+        var player = host.LastPlayer;
+        if (!player.IsValid)
+        {
+            ImGui.TextDisabled("Player position: unavailable.");
+            return;
+        }
+
+        var local = Geometry.RotateDegrees(
+            player.ArenaPosition,
+            -assignments.NeoRotationDegrees);
+        var onCentre = MathF.Abs(local.X) <= Geometry.Epsilon;
+        var standingWest = local.X < 0;
+        var standingIn = onCentre
+            ? "centre line (counts as neither)"
+            : $"{(standingWest == briefing.BlackWest ? "Black" : "White")} "
+                + $"({(standingWest ? "WEST" : "EAST")})";
+
+        ImGui.TextUnformatted(
+            $"Sampled arena ({player.ArenaPosition.X:0.00}, {player.ArenaPosition.Y:0.00})"
+            + $"  ->  Neo-local X {local.X:0.000}");
+        ImGui.TextUnformatted($"Standing in: {standingIn}");
+
+        var wouldPass = onCentre || standingWest == briefing.StandWest;
+        var inside = KefkaP4Mechanics.IsInsideArena(player.ArenaPosition);
+        if (!inside)
+        {
+            ImGui.TextColored(new Vector4(1, 0.35f, 0.35f, 1), "Would FAIL: outside arena boundary");
+        }
+        else
+        {
+            ImGui.TextColored(
+                wouldPass ? new Vector4(0.35f, 0.95f, 0.45f, 1) : new Vector4(1, 0.35f, 0.35f, 1),
+                wouldPass
+                    ? "Would PASS if Flood resolved now."
+                    : $"Would FAIL: wrong Antilight side: needed {briefing.AntilightText} "
+                        + $"({briefing.SideText})");
         }
     }
 
