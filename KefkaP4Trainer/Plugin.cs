@@ -27,6 +27,7 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
     private readonly CastBarRenderer castBarRenderer;
     private readonly CountdownRenderer countdownRenderer;
     private readonly SoundCueService soundCues = new();
+    private readonly MitigationRenderer mitigationRenderer;
     private bool disposed;
     private bool pausedForMissingPlayer;
     private bool updateFaulted;
@@ -61,6 +62,7 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
         resultOverlayRenderer = new ResultOverlayRenderer(Services.Log);
         castBarRenderer = new CastBarRenderer(Services.Log);
         countdownRenderer = new CountdownRenderer(Services.Log);
+        mitigationRenderer = new MitigationRenderer(Services.Log);
 
         Services.CommandManager.AddHandler(
             CommandName,
@@ -378,6 +380,7 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
             statusHudRenderer.Draw(Engine, Configuration);
             castBarRenderer.Draw(Engine, Configuration);
             countdownRenderer.Draw(Engine, Configuration);
+            mitigationRenderer.Draw(Engine, Configuration, MitSlotResolver.Resolve(Configuration));
             resultOverlayRenderer.Draw(Engine);
             windowSystem.Draw();
         }

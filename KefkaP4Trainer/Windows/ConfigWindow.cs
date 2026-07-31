@@ -457,6 +457,84 @@ internal sealed class ConfigWindow : Window
             ImGui.Unindent();
         }
 
+        var mitAlerts = config.ShowMitigationAlerts;
+        if (ImGui.Checkbox("Show mitigation alerts", ref mitAlerts))
+        {
+            config.ShowMitigationAlerts = mitAlerts;
+            changed = true;
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "Calls the next mitigation you owe, detected from your job.\n"
+                + "Carry-overs are skipped: those are still running from an\n"
+                + "earlier press and need nothing pressed now.");
+        }
+
+        if (config.ShowMitigationAlerts)
+        {
+            ImGui.Indent();
+
+            if (MitSlotResolver.NeedsChoice(out var tankPair))
+            {
+                if (tankPair)
+                {
+                    var mainTank = config.PlayerIsMainTank;
+                    if (ImGui.Checkbox("I am the main tank", ref mainTank))
+                    {
+                        config.PlayerIsMainTank = mainTank;
+                        changed = true;
+                    }
+                }
+                else
+                {
+                    var firstMelee = config.PlayerIsFirstMelee;
+                    if (ImGui.Checkbox("I am D1 (rather than D2)", ref firstMelee))
+                    {
+                        config.PlayerIsFirstMelee = firstMelee;
+                        changed = true;
+                    }
+                }
+
+                ImGui.TextDisabled("Your job shares a pair of seats, so pick one.");
+            }
+            else
+            {
+                ImGui.TextDisabled("Seat detected from your job.");
+            }
+
+            var lead = config.MitigationLeadTime;
+            if (ImGui.SliderFloat("Alert lead time", ref lead, 1, 30, "%.1fs"))
+            {
+                config.MitigationLeadTime = lead;
+                changed = true;
+            }
+
+            var mitX = config.MitigationX;
+            if (ImGui.DragFloat("Mit alert X", ref mitX, 1, 0, 6000, "%.0f px"))
+            {
+                config.MitigationX = mitX;
+                changed = true;
+            }
+
+            var mitY = config.MitigationY;
+            if (ImGui.DragFloat("Mit alert Y", ref mitY, 1, 0, 4000, "%.0f px"))
+            {
+                config.MitigationY = mitY;
+                changed = true;
+            }
+
+            var mitScale = config.MitigationScale;
+            if (ImGui.SliderFloat("Mit alert scale", ref mitScale, 0.5f, 2.5f, "%.2fx"))
+            {
+                config.MitigationScale = mitScale;
+                changed = true;
+            }
+
+            ImGui.Unindent();
+        }
+
         var soundCues = config.PlaySoundCues;
         if (ImGui.Checkbox("Play sound cues", ref soundCues))
         {

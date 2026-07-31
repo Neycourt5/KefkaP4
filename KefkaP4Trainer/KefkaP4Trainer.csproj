@@ -13,8 +13,9 @@
     <Use_Dalamud_FFXIVClientStructs>true</Use_Dalamud_FFXIVClientStructs>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Use_Dalamud_Newtonsoft_Json>false</Use_Dalamud_Newtonsoft_Json>
-    <Use_Dalamud_Lumina>false</Use_Dalamud_Lumina>
-    <Use_Dalamud_Lumina_Excel>false</Use_Dalamud_Lumina_Excel>
+    <!-- LocalPlayer.ClassJob is a Lumina RowRef, needed to detect the mit seat. -->
+    <Use_Dalamud_Lumina>true</Use_Dalamud_Lumina>
+    <Use_Dalamud_Lumina_Excel>true</Use_Dalamud_Lumina_Excel>
     <Use_Dalamud_Serilog>false</Use_Dalamud_Serilog>
     <Use_Dalamud_MSObjectPool>false</Use_Dalamud_MSObjectPool>
   </PropertyGroup>

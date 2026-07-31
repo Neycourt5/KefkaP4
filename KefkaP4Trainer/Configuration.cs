@@ -151,6 +151,22 @@ public sealed class Configuration : IPluginConfiguration
 
     public int CastFinishSound { get; set; } = 4;
 
+    // Mitigation alerts. The seat is detected from the job where that is
+    // unambiguous; the tank and melee pairs need these two answers.
+    public bool ShowMitigationAlerts { get; set; } = true;
+
+    public bool PlayerIsMainTank { get; set; } = true;
+
+    public bool PlayerIsFirstMelee { get; set; } = true;
+
+    public float MitigationLeadTime { get; set; } = 6;
+
+    public float MitigationX { get; set; } = 760;
+
+    public float MitigationY { get; set; } = 640;
+
+    public float MitigationScale { get; set; } = 1;
+
     public bool ShowCountdown { get; set; } = true;
 
     public float CountdownScale { get; set; } = 1;
