@@ -270,79 +270,100 @@ internal sealed class ArenaOverlayRenderer
         MagicTell tell,
         Configuration configuration)
     {
-        var count = (tell.HasThunder ? 1 : 0) + (tell.HasIce ? 1 : 0);
-        if (count == 0)
+        if (!tell.HasThunder && !tell.HasIce)
         {
             return;
         }
 
-        // Anchored to the arena centre, which is where Kefka casts from, so the
-        // habit this builds is "look at the boss" rather than "look at my HUD".
-        var height = Math.Clamp(configuration.GroundHeightOffset, -2, 2);
-        var anchor = projection.Project(arena.SimulatorToWorld(Vector2.Zero, height));
-        if (!anchor.Succeeded || !anchor.InView)
-        {
-            return;
-        }
-
+        // Each badge is projected from its own world anchor over the arena centre,
+        // which is where Kefka casts from. A shared anchor plus a screen-space
+        // stack collapsed the pair as the camera pitched down; separate heights
+        // keep lightning at his shoulders and ice at his knees from every angle.
+        var ground = Math.Clamp(configuration.GroundHeightOffset, -2, 2);
         var scale = Math.Clamp(configuration.MagicTellScale, 0.5f, 3);
         var radius = 26 * scale;
-        var rowGap = 14 * scale;
         var captionGap = 10 * scale;
+        var spread = Math.Clamp(configuration.MagicTellHorizontalSpread, 0, 12);
+        var iceHeight = Math.Clamp(configuration.MagicTellIceHeight, -2, 12);
+        var lightningHeight = Math.Clamp(configuration.MagicTellLightningHeight, -2, 12);
 
-        // Stacked, thunder over ice, matching where the two rings sit on Kefka:
-        // thunder up around his head, ice down by his legs. Captions sit beside
-        // each badge rather than under it, which is what ran them together when
-        // the badges were side by side.
-        var thunderCaption = $"LIGHTNING {FakeWord(tell.ThunderFake)}";
-        var iceCaption = $"ICE {FakeWord(tell.IceFake)}";
-        var captionWidth = 0f;
-        if (tell.HasThunder)
-        {
-            captionWidth = MathF.Max(captionWidth, ImGui.CalcTextSize(thunderCaption).X);
-        }
+        var labelAnchor = Vector2.Zero;
+        var hasLabelAnchor = false;
 
         if (tell.HasIce)
         {
-            captionWidth = MathF.Max(captionWidth, ImGui.CalcTextSize(iceCaption).X);
+            var anchor = projection.Project(
+                arena.SimulatorToWorld(new Vector2(-spread, 0), ground + iceHeight));
+            if (anchor.Succeeded && anchor.InView)
+            {
+                DrawTellRow(
+                    drawList,
+                    anchor.ScreenPosition,
+                    radius,
+                    captionGap,
+                    $"ICE {FakeWord(tell.IceFake)}",
+                    tell.IceFake);
+                labelAnchor = anchor.ScreenPosition;
+                hasLabelAnchor = true;
+            }
         }
 
-        var groupWidth = (radius * 2) + captionGap + captionWidth;
-        var rowStep = (radius * 2) + rowGap;
-        var groupHeight = (count * radius * 2) + ((count - 1) * rowGap);
-        var left = anchor.ScreenPosition.X - (groupWidth * 0.5f);
-        var top = anchor.ScreenPosition.Y - groupHeight - (110 * scale);
-
-        var row = 0;
         if (tell.HasThunder)
         {
-            DrawTellBadge(
-                drawList,
-                new Vector2(left + radius, top + (row++ * rowStep) + radius),
-                radius,
-                captionGap,
-                thunderCaption,
-                tell.ThunderFake);
+            var anchor = projection.Project(
+                arena.SimulatorToWorld(new Vector2(spread, 0), ground + lightningHeight));
+            if (anchor.Succeeded && anchor.InView)
+            {
+                DrawTellRow(
+                    drawList,
+                    anchor.ScreenPosition,
+                    radius,
+                    captionGap,
+                    $"LIGHTNING {FakeWord(tell.ThunderFake)}",
+                    tell.ThunderFake);
+
+                // The caption rides above whichever badge is higher on screen,
+                // which is normally lightning but need not be at every pitch.
+                if (!hasLabelAnchor || anchor.ScreenPosition.Y < labelAnchor.Y)
+                {
+                    labelAnchor = anchor.ScreenPosition;
+                    hasLabelAnchor = true;
+                }
+            }
         }
 
-        if (tell.HasIce)
+        if (!hasLabelAnchor)
         {
-            DrawTellBadge(
-                drawList,
-                new Vector2(left + radius, top + (row * rowStep) + radius),
-                radius,
-                captionGap,
-                iceCaption,
-                tell.IceFake);
+            return;
         }
 
-        var label = tell.Label;
-        var labelSize = ImGui.CalcTextSize(label);
+        var labelSize = ImGui.CalcTextSize(tell.Label);
         DrawShadowedText(
             drawList,
-            label,
-            new Vector2(anchor.ScreenPosition.X - (labelSize.X * 0.5f), top - labelSize.Y - (6 * scale)),
+            tell.Label,
+            new Vector2(
+                labelAnchor.X - (labelSize.X * 0.5f),
+                labelAnchor.Y - radius - labelSize.Y - (8 * scale)),
             ImGui.GetColorU32(new Vector4(0.90f, 0.93f, 1.00f, 1)));
+    }
+
+    /// <summary>Centres a badge and its caption as one block on a projected anchor.</summary>
+    private static void DrawTellRow(
+        ImDrawListPtr drawList,
+        Vector2 anchor,
+        float radius,
+        float captionGap,
+        string caption,
+        bool fake)
+    {
+        var groupWidth = (radius * 2) + captionGap + ImGui.CalcTextSize(caption).X;
+        DrawTellBadge(
+            drawList,
+            new Vector2(anchor.X - (groupWidth * 0.5f) + radius, anchor.Y),
+            radius,
+            captionGap,
+            caption,
+            fake);
     }
 
     private static void DrawTellBadge(

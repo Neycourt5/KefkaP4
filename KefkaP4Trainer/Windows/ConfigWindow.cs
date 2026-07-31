@@ -318,6 +318,42 @@ internal sealed class ConfigWindow : Window
                 changed = true;
             }
 
+            var lightningHeight = config.MagicTellLightningHeight;
+            if (ImGui.SliderFloat("Lightning height", ref lightningHeight, -2, 12, "%.2f y"))
+            {
+                config.MagicTellLightningHeight = lightningHeight;
+                changed = true;
+            }
+
+            var iceHeight = config.MagicTellIceHeight;
+            if (ImGui.SliderFloat("Ice height", ref iceHeight, -2, 12, "%.2f y"))
+            {
+                config.MagicTellIceHeight = iceHeight;
+                changed = true;
+            }
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(
+                    "Yalms above the arena floor. Both badges are placed in the world,\n"
+                    + "so raising lightning and lowering ice keeps them apart at every\n"
+                    + "camera angle. Defaults aim at Kefka's shoulders and knees.");
+            }
+
+            var tellSpread = config.MagicTellHorizontalSpread;
+            if (ImGui.SliderFloat("Horizontal spread", ref tellSpread, 0, 12, "%.1f"))
+            {
+                config.MagicTellHorizontalSpread = tellSpread;
+                changed = true;
+            }
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(
+                    "Pushes the two badges apart sideways as well, for camera angles\n"
+                    + "where they would otherwise sit in front of one another.");
+            }
+
             ImGui.Unindent();
         }
 

@@ -74,6 +74,19 @@ public sealed class Configuration : IPluginConfiguration
 
     public float MagicTellScale { get; set; } = 1;
 
+    // Badge heights in yalms above the arena floor. The two badges are projected
+    // from separate world points rather than stacked in screen space, so the gap
+    // holds as the camera pitches and orbits. Defaults sit ice down by Kefka's
+    // knees and lightning up at his shoulders, matching where the two orb rings
+    // ride on the model.
+    public float MagicTellIceHeight { get; set; } = 1.2f;
+
+    public float MagicTellLightningHeight { get; set; } = 4.2f;
+
+    // Simulator units applied in opposite directions on the arena X axis, for
+    // camera angles where the badges would otherwise line up behind each other.
+    public float MagicTellHorizontalSpread { get; set; }
+
     // Thunder and ice telegraphs otherwise share the phase palette, leaving shape
     // (line versus cone) as the only thing telling the two elements apart.
     public bool ElementColoredTelegraphs { get; set; } = true;
