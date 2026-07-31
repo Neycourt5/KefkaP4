@@ -89,10 +89,12 @@ internal sealed class SoundCueService
         {
             // PlaySoundEffect lives on an addon rather than anywhere global, so
             // this borrows the chat log: it is loaded whenever the HUD is.
-            var addon = (AtkUnitBase*)Services.GameGui.GetAddonByName("_ChatLog", 1);
-            if (addon is not null)
+            // GetAddonByName hands back Dalamud's wrapper, so unwrap to the
+            // ClientStructs pointer that carries the method.
+            var wrapper = Services.GameGui.GetAddonByName("_ChatLog", 1);
+            if (!wrapper.IsNull)
             {
-                addon->PlaySoundEffect(soundIndex);
+                ((AtkUnitBase*)wrapper.Address)->PlaySoundEffect(soundIndex);
             }
         }
         catch (Exception exception)
