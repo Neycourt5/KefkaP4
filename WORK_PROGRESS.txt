@@ -281,3 +281,155 @@ compile. Nothing here has been seen running in FFXIV.
      achievable in the shape the continuation prompt assumes.
   4. Add fixtures for the five "Ported" mechanics to promote them to
      "Verified" in the parity matrix.
+
+
+====================================================================
+2026-07-31 (session 2)  Version bump, virtual party, healer observation
+====================================================================
+
+--------------------------------------------------------------------
+A. VERSION DECISION
+--------------------------------------------------------------------
+
+Locations inspected:
+  KefkaP4Trainer/KefkaP4Trainer.csproj  <Version>      -> 0.1.8.0
+  repo.json  AssemblyVersion / TestingAssemblyVersion  -> 0.1.8.0
+  repo.json  DownloadLink{Install,Update,Testing}      -> .../v0.1.8.0/latest.zip
+  KefkaP4Trainer/KefkaP4Trainer.json                   -> no version key (correct;
+                                                          DalamudPackager injects it)
+  AssemblyInfo.cs                                      -> none in this repo
+  git tags                                             -> v0.1.0.0 .. v0.1.8.0
+
+1. Currently declared: 0.1.8.0
+2. Latest released:    v0.1.8.0 (tag at 395639c, repo.json published by fd0cc53)
+3. Did the four session-1 commits change behaviour without a bump? YES.
+   2a2eedf changed the Flood cue text and failure reason; 44661ce changed tell
+   placement and added three config keys. Both are user-visible, and both
+   shipped on top of an already-released 0.1.8.0.
+4. Next correct version: 0.1.9.0. Set in the csproj.
+
+repo.json was deliberately LEFT at 0.1.8.0. Its AssemblyVersion is what
+Dalamud advertises and its DownloadLink must point at a release asset that
+exists. Bumping it before a v0.1.9.0 release is cut would advertise 0.1.9.0
+while serving the v0.1.8.0 zip. .github/workflows/release.yml rewrites
+repo.json from the tag at release time, which is the pattern the existing
+history already follows (a "Bump local build version" commit, then "Release vX").
+
+--------------------------------------------------------------------
+B. PROTECTING SESSION-1 WORK
+--------------------------------------------------------------------
+
+All four commits verified present by hash before any change:
+  2a2eedf, 81ce6c2, 44661ce, 2f72c7f
+
+  git status --short --branch      -> ## main...origin/main [ahead 4]
+  git push --dry-run origin main   -> fd0cc53..2f72c7f, exit 0
+  git push origin main             -> pushed; behind=0 ahead=0
+
+No force-push, no reset, no discard at any point. origin/main advanced from
+fd0cc53 to 2f72c7f.
+
+--------------------------------------------------------------------
+C. DALAMUD API 15 OBSERVATION SURVEY (the gate on the healer feature)
+--------------------------------------------------------------------
+
+Surveyed Dalamud.xml and FFXIVClientStructs.xml in the 15.0.3 dev distribution.
+
+FINDING: there is NO action or combat-event service in API 15. The full
+IDalamudService list contains nothing equivalent to an "action used" callback.
+Everything must be polled from state the game already publishes.
+
+Usable, in order of reliability:
+  1. IBattleChara.IsCasting + CastActionId + CurrentCastTime/TotalCastTime
+     -> casted actions only. High confidence, gives CastTargetObjectId.
+  2. ActionManager.IsActionOffCooldown + GetCurrentCharges
+     -> instants and oGCDs. The ONLY safe way to see them.
+     NOTE: GetRecastTimeElapsed does NOT exist in this ClientStructs version.
+     Available recast members are exactly: GetRecastTime, GetRecastTimeForGroup,
+     GetAdjustedRecastTime, GetAdditionalRecastGroup, GetCurrentCharges,
+     IsActionOffCooldown, StartCooldown. GetRecastGroupDetail is absent.
+  3. IBattleChara.StatusList -> status appearance. NOT implemented yet.
+
+HARD LIMIT: an instant *GCD* cannot be identified. Every GCD shares one recast
+group, so the group tells you a GCD fired but not which one. Documented in
+ObservationCapabilities.Notes and shown in the healer window rather than
+papered over.
+
+Also discovered: IDataManager was not registered in Services.cs. Added, so the
+action database can be cross-checked against the Lumina Action sheet.
+
+--------------------------------------------------------------------
+D. WHAT THE TESTS CAUGHT
+--------------------------------------------------------------------
+
+Writing VirtualPartyTests/DamageTableTests corrected three things:
+
+  1. White Antilight is NOT a wrong-side one-shot. At party-total scope it is
+     92,625 against a 148,000 pool. The source log is a clear, so the figure is
+     what the party took on its CORRECT side. LethalByDesign removed; the
+     wrong-side outcome stays a Flood mechanic failure, not a damage number.
+  2. Effect windows are half-open everywhere in this codebase, so a 9s regen on
+     a 3s interval ticks at 3 and 6 but not at 9. Test expectation corrected and
+     the convention documented.
+  3. REAL BUG: SimulatedMember.TakeDamage reported HpLost as the incoming
+     damage, so a 300k hit on a 100k pool logged "hp -300,000". Now clamped to
+     HP actually removed, with the excess reported as a separate Overkill field.
+
+Reference-scope reasoning is asserted, not assumed:
+UnmitigatedRaidwidesAreSurvivableAtTheReferencePool fails if the figures are
+ever read as per-target, because every Grand Cross would then be a double
+overkill. The same test also asserts the full unmitigated sequence still wipes,
+so the numbers cannot drift soft either.
+
+--------------------------------------------------------------------
+E. BUILDS AND TESTS
+--------------------------------------------------------------------
+
+  Session-1 end                  109/109
+  + virtual party + damage table 144/144 (3 failures first, all fixed as above)
+  + healer action model          180/180
+  Final                          180/180, build 0 Warning(s) 0 Error(s)
+
+--------------------------------------------------------------------
+F. COMMITS THIS SESSION
+--------------------------------------------------------------------
+
+  6d194fd  feat: add the virtual party health model and damage dataset
+  7af5429  feat: add the healer action model, database and applier
+  3e057e6  feat: wire healer practice into the plugin with a simulated party panel
+
+--------------------------------------------------------------------
+G. AWAITING IN-GAME VERIFICATION
+--------------------------------------------------------------------
+
+Everything below compiles and is unit-tested, but has NOT been seen running:
+
+  1. Flood resolved-direction cue and debug panel      (session 1)
+  2. Element tell world placement                      (session 1)
+  3. HealerActionObserver cast-bar detection
+  4. HealerActionObserver cooldown-transition detection
+  5. Action-id cross-check against the Lumina sheet
+  6. HealerWindow rendering
+
+IN-GAME CHECKLIST, in priority order:
+
+  [1] /kefkap4 healer -> "Observation" section. Read the id cross-check FIRST.
+      Every mismatch it lists is a wrong id in HealerActionDatabase; correct
+      them from the reported game names. This is expected to find several.
+  [2] With healer practice enabled and the sim stopped, press an oGCD mit
+      (Sacred Soil / Kerachole / Collective Unconscious / Plenary Indulgence).
+      Confirm it appears in the action log with method CooldownTransition and
+      that the party bars show the mitigation.
+  [3] Press a casted heal (Cure II / Adloquium / Benefic II / Diagnosis).
+      Confirm method CastBar and that an INTERRUPTED cast produces nothing.
+  [4] Confirm one press produces exactly ONE log line, not one per frame.
+  [5] Start a pull with "Run scripted damage" on; confirm HP drops at 12.6,
+      18.4, 27.6, 34.4, 44.0, 55.0, 64.5, 81.6, 88.5 and that the party
+      survives with reasonable mitigation.
+  [6] Scrub the timeline backwards; confirm damage events do not replay.
+  [7] Flood: /kefkap4 debug -> Flood of Naughts, scrub to ~50s paused, confirm
+      the stated side matches your icons and Would PASS/FAIL flips across the
+      centre line.
+  [8] Element tells: confirm lightning at Kefka's shoulders and ice at his
+      knees, and that the gap survives pitching the camera down. Tune
+      Settings -> Lightning/Ice height if the defaults miss the model.

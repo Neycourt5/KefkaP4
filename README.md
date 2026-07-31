@@ -123,10 +123,58 @@ The seven non-player party slots follow the ported Waju solution positions.
 Only the selected player slot uses live game position/facing. The role is
 chosen explicitly; the plugin does not infer it from the player's current job.
 
+## Healer practice (experimental, awaiting in-game verification)
+
+`/kefkap4 healer` opens a **fully simulated** eight-slot party. Nothing in this
+mode reads or writes real HP, applies a real status, touches actor memory or
+modifies any native UI node. It is off by default so DPS movement practice is
+unaffected.
+
+**What it does.** Eight virtual slots with HP, absorption shields,
+multiplicatively-stacking mitigation and simulation-time regens. Scripted
+raidwide damage fires on the phase 4 timeline. Your observed healing actions
+apply shields, mitigation, regens and heals to the virtual party, and the panel
+shows the full derivation of every hit — raw, scaled, mitigated, absorbed, HP
+lost, overkill.
+
+**Damage calibration.** Nine events, timed from the mechanics the trainer
+already models and sized from a single user-supplied FF Logs report. The raw
+`U:` figures are preserved verbatim and treated as **party totals**; a
+per-target reading would make every Grand Cross an unhealable double overkill.
+These are plausible practice values, **not** authoritative encounter data.
+Damage is normalised against a configurable reference HP pool, so changing the
+simulated max HP keeps each mechanic's severity constant.
+
+**Which healer actions are detected.** Dalamud API 15 exposes no action or
+combat-event service, so everything is polled from state the game already
+publishes — no hooks, no packets, no injection:
+
+| | |
+| --- | --- |
+| Casted GCD heals | yes, via the cast bar (interrupted casts are ignored) |
+| oGCD heals, mitigation, shields, regens | yes, via recast/charge transitions |
+| Instant **GCD** heals | **no** — all GCDs share one recast group, so the group cannot say *which* fired |
+| Other players' actions | **no** — only the local player is observed |
+| Status-appearance detection | not implemented yet |
+
+Anything undetected can be injected by hand from the debug controls, which also
+provide raidwide/targeted damage, party heal, shield, mitigation, regen, raise
+and reset — so the whole pipeline is exercisable without FFXIV.
+
+**Action ids are unverified.** The action database was written without a running
+game. At startup every id is cross-checked against the game's own Action sheet
+and any disagreement is listed in the window; an id that matches nothing simply
+never fires. Read that list first and correct the table from it.
+
+Healing amounts are fractions of maximum HP rather than potency — a deliberate
+first cut that stays coherent without simulating spell speed, healing bonus or
+party buffs.
+
 ## Commands
 
 ```text
 /kefkap4
+/kefkap4 healer
 /kefkap4 start
 /kefkap4 pause
 /kefkap4 resume

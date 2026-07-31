@@ -1,19 +1,22 @@
 KefkaP4Trainer — WORK PLAN
-Last updated: 2026-07-31
-Baseline at time of writing: main @ 44661ce (three commits past the v0.1.8.0 release tag)
+Last updated: 2026-07-31 (session 2)
+Baseline: main @ 3e057e6, version 0.1.9.0 (unreleased; v0.1.8.0 is the last tag)
 
 ====================================================================
 CURRENT STATUS
 ====================================================================
 
 The plugin builds clean (0 warnings, TreatWarningsAsErrors on) against
-Dalamud 15.0.3 / API level 15, and 109/109 core tests pass.
+Dalamud 15.0.3 / API level 15, and 180/180 core tests pass.
 
-This session covered repository recovery, the Waju parity audit for the
-timeline and Flood of Naughts, the Flood investigation, and the element-tell
-placement fix. The large new feature areas in the continuation prompt —
-healer simulation, multiplayer, audio expansion and HUD anchoring — are NOT
-started. Nothing about them exists in the tree beyond this plan.
+Session 1 covered repository recovery, the Waju timeline/Flood parity audit
+and the element-tell placement fix. Session 2 bumped the version to 0.1.9.0,
+pushed session 1 to origin, and built the healer feature from the core
+outward: virtual party health, the FF Logs damage dataset, the healer action
+model/database/applier, and the plugin observer plus simulated party panel.
+
+Still NOT started: the complementary virtual co-healer, native party-list
+anchoring, HUD debuff anchoring, audio expansion, and all multiplayer work.
 
 Do not trust any claim below that is not marked DONE.
 
@@ -56,11 +59,28 @@ MILESTONES
        Chaos debuffs, Thrumming Thunder, Entropy twisters, Blizzard Blowout,
        Mana Release. See the parity matrix table for the per-mechanic status.
 
+[DONE] M7  Virtual party health model
+       Eight slots, HP/shields/multiplicative mitigation/simulation-time
+       regens, deterministic damage pipeline with a full audit trail.
+       36 tests. Pure core, no Dalamud.
+
+[DONE] M9  Damage-event dataset + FF Logs calibration
+       Nine events anchored to the KefkaP4Mitigation times. Reference figures
+       recorded as PARTY TOTALS with the reasoning asserted by test; raw U:
+       values preserved verbatim and visible in debug.
+
+[DONE] M10 Healer action observation
+       API 15 has no action/combat-event service. Implemented as cast-bar
+       polling plus IsActionOffCooldown/GetCurrentCharges transitions.
+       Instant GCDs are NOT identifiable (shared recast group) and this is
+       stated in the UI. Action ids are unverified and cross-checked against
+       the Lumina sheet at startup.
+
+[PARTIAL] M8  Party-list overlay
+       Standalone HealerWindow panel done (/kefkap4 healer). Anchoring it
+       beside the NATIVE party list is not started.
+
 [NOT STARTED] M6  Debuff-bar HUD anchoring
-[NOT STARTED] M7  Virtual party health model
-[NOT STARTED] M8  Party-list overlay
-[NOT STARTED] M9  Damage-event dataset + FF Logs calibration
-[NOT STARTED] M10 Healer action observation
 [NOT STARTED] M11 One-healer complementary co-healer
 [NOT STARTED] M12 Countdown / targetable audio expansion
 [NOT STARTED] M13 Multiplayer protocol + loopback
@@ -71,54 +91,69 @@ MILESTONES
 CURRENT BLOCKER
 ====================================================================
 
-None technical. The blocker is verification: every change this session is
-proven only by unit tests and a clean compile. Nothing has been loaded into
-FFXIV. M15 gates confidence in M3 and M4 specifically, because both change
-what the player sees.
+None technical. The blocker is verification: nothing from either session has
+been loaded into FFXIV. Unit tests and a clean compile are the only evidence.
 
-A second, softer blocker for M10: it is NOT yet established which healer
-actions can be observed safely under API 15. Casted actions are reachable via
-battle-character casting state, but most healer oGCDs and instants are not
-casts. Until that investigation is done, M7–M11 cannot be scoped honestly.
+The highest-value single in-game action is reading the action-id cross-check
+in /kefkap4 healer. HealerActionDatabase was written without a game to check
+against, so several ids are probably wrong. The observer resolves every id
+against the Lumina Action sheet at startup and lists disagreements in that
+window, so one launch turns a guess into a correction list. Until that is
+done, treat healer action recognition as unproven.
 
 ====================================================================
 EXACT NEXT TASK
 ====================================================================
 
-Load the built DLL and verify M3 and M4 in game (see README "Load as a
-development plugin"). Specifically:
+Work the in-game checklist in WORK_PROGRESS.txt section G, in order. Item [1]
+(the action-id cross-check) gates the usefulness of everything else in the
+healer feature.
 
-  1. /kefkap4 debug -> "Flood of Naughts" section. Scrub to ~50s paused.
-     Confirm the stated side matches the icons you actually hold, and that
-     "Would PASS/FAIL" flips as you cross the arena centre line.
-  2. Watch a Mysterious Magic cast and confirm lightning sits around Kefka's
-     shoulders and ice around his knees, and that the gap survives pitching
-     the camera down. Tune Settings -> Lightning/Ice height if the defaults
-     miss the model — they were chosen from arena scale, not from measuring
-     Kefka, and are the most likely thing to need adjustment.
+If no game is available, the next implementable slices in dependency order:
 
-Then pick up M6 or M10 (both are investigation-first, and M10's outcome
-determines whether M7–M11 are worth the size they imply).
+  1. M11 co-healer. The applier already routes real and virtual actions
+     through one path, so a virtual co-healer is a scheduler emitting
+     ObservedHealerAction values with SourceName "co-healer". Fully testable
+     without a game.
+  2. M5 remaining parity fixtures (Chaos, Thrumming Thunder, Entropy,
+     Blizzard Blowout, Mana Release) to promote them from Ported to Verified.
+  3. M12 audio: audit the existing SoundCueService for duplicate playback
+     across pause/resume/scrub, then add distinct countdown and targetable
+     cues driven by the authoritative timeline event.
+
+Do NOT start multiplayer (M13/M14) yet. The virtual party and action-event
+shapes are new and still likely to move; freezing them into a wire protocol
+now would be premature.
 
 ====================================================================
 RESUME HERE
 ====================================================================
 
-Repo:        d:\Users\acourtney\OneDrive - Monitor Technologies, LLC\Documents\KefkaP4
-Branch:      main (3 commits ahead of origin/main — NOT yet pushed)
+Repo:        Documents\KefkaP4 (OneDrive - Monitor Technologies, LLC)
+Branch:      main, pushed to origin/main
+Version:     0.1.9.0 in the csproj; repo.json still says 0.1.8.0 ON PURPOSE
+             (it must track the last RELEASED version; release.yml rewrites it
+             from the tag). To release:
+                 git tag v0.1.9.0 && git push origin v0.1.9.0
 Layout:      FLAT. There is no DalamudPlugin/ folder in this repo.
              Waju-Sims/DalamudPlugin/ is a STALE 2026-07-30 copy. Never edit it.
 Reference:   Waju-Sims/waju-sim/scenes/dmu/p4/{p4_seq.gd,p4_pos.gd,p4_main.tscn}
 
 Build (needs Dalamud dev libs):
+  export PATH="$LOCALAPPDATA/Microsoft/dotnet:$PATH"
+  export DOTNET_ROOT="$LOCALAPPDATA/Microsoft/dotnet"
   export DALAMUD_HOME=<dir containing Dalamud.dll>
   dotnet test  KefkaP4Trainer.Core.Tests/KefkaP4Trainer.Core.Tests.csproj -c Release
   dotnet build KefkaP4Trainer/KefkaP4Trainer.csproj -c Release -p:Platform=x64
 
-Note: the .NET 10 SDK on this machine is NOT on PATH. It lives at
-  %LOCALAPPDATA%\Microsoft\dotnet
-Add it to PATH and set DOTNET_ROOT to the same directory, or dotnet resolves
-to the runtime-only install in Program Files and reports "No .NET SDKs found".
+The .NET 10 SDK on this machine is NOT on PATH. It lives at
+%LOCALAPPDATA%\Microsoft\dotnet. Without the two exports above, dotnet
+resolves to the runtime-only install in Program Files and reports
+"No .NET SDKs found". Dalamud dev libs are not at the XIVLauncher path either;
+extract https://goatcorp.github.io/dalamud-distrib/latest.zip somewhere and
+point DALAMUD_HOME at it.
 
 Output DLL:  KefkaP4Trainer\bin\x64\Release\KefkaP4Trainer.dll
 Package:     KefkaP4Trainer\bin\x64\Release\KefkaP4Trainer\latest.zip
+
+Commands:    /kefkap4 [start|stop|pause|resume|reset|restart|config|debug|healer]
