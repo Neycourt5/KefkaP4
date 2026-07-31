@@ -346,6 +346,7 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
             LastPlayer = gameStateReader.Read(Transform, elapsedSeconds);
             Engine.Clock.PlaybackSpeed = Configuration.PlaybackSpeed;
             Engine.FailureBehavior = Configuration.FailureBehavior;
+            Engine.Encounter.SwapAntilightColors = Configuration.SwapAntilightColors;
             if (!LastPlayer.IsValid)
             {
                 if (Engine.Clock.State is SimulationState.Running or SimulationState.Countdown)

@@ -18,6 +18,12 @@ internal sealed class ShapeRenderer
     private static readonly Vector3 IceDangerColor = new(0.36f, 0.90f, 1.00f);
     private static readonly Vector3 RequiredColor = new(0.20f, 0.95f, 0.55f);
     private static readonly Vector3 InformationColor = new(0.35f, 0.68f, 1.00f);
+
+    // The two Flood Antilights. In game these read as a blue and a purple
+    // telegraph, so they are drawn as such rather than as "black" and "white",
+    // which no player can match to what is on screen.
+    private static readonly Vector3 AntilightPurple = new(0.64f, 0.33f, 0.95f);
+    private static readonly Vector3 AntilightBlue = new(0.22f, 0.62f, 1.00f);
     private static readonly Vector3 SuccessColor = new(0.20f, 0.90f, 0.35f);
     private static readonly Vector3 FailureColor = new(1.00f, 0.15f, 0.55f);
 
@@ -605,14 +611,16 @@ internal sealed class ShapeRenderer
 
         if (shape.Phase == ShapePhase.Information)
         {
-            if (shape.Label.Contains("Black", StringComparison.OrdinalIgnoreCase))
+            // Antilight labels lead with the resolved colour word, so the drawn
+            // colour cannot drift from what the cue and debug panel say.
+            if (shape.Label.StartsWith("PURPLE", StringComparison.Ordinal))
             {
-                return new Vector3(0.48f, 0.35f, 0.72f);
+                return AntilightPurple;
             }
 
-            if (shape.Label.Contains("White", StringComparison.OrdinalIgnoreCase))
+            if (shape.Label.StartsWith("BLUE", StringComparison.Ordinal))
             {
-                return new Vector3(0.88f, 0.90f, 1.00f);
+                return AntilightBlue;
             }
         }
 

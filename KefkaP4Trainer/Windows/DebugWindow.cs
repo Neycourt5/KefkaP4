@@ -10,6 +10,12 @@ internal sealed class DebugWindow : Window
 {
     private readonly ITrainerWindowHost host;
     private Vector2 testGhostPosition = new(0, -10);
+    private bool floodOverride;
+    private bool floodBlackWound;
+    private bool floodBeyondDeath;
+    private bool floodFake;
+    private bool floodBlackWest;
+    private int floodCycle;
 
     public DebugWindow(ITrainerWindowHost host)
         : base("Kefka P4 Trainer Debug###KefkaP4TrainerDebug")
@@ -500,31 +506,89 @@ internal sealed class DebugWindow : Window
     }
 
     /// <summary>
-    /// Everything the Flood grader reads, in the order it reads it. The safe
-    /// side is not "your own colour": it also depends on the Field/Death icon
-    /// and the fake flag, so the derivation is spelled out rather than implied.
+    /// Everything the Flood grader reads, in the order it reads it, plus a
+    /// manual override so every combination can be reviewed without restarting.
     /// </summary>
+    /// <remarks>
+    /// The safe side is not "your own colour": it also depends on the
+    /// Field/Death icon and the fake flag. Both the canonical Black/White name
+    /// and the colour actually drawn are shown, because conflating those two is
+    /// what makes this mechanic misread.
+    /// </remarks>
     private void DrawFloodDiagnostics()
     {
         var engine = host.Engine;
         var encounter = engine.Encounter;
         var assignments = encounter.Assignments;
         var role = engine.PlayerRole;
-        var briefing = encounter.FloodBriefingFor(role);
+
+        if (ImGui.Checkbox("Override assignment", ref floodOverride))
+        {
+            // no state to sync; the resolution is rebuilt from the fields below
+        }
+
+        var live = encounter.FloodResolutionFor(role);
+        var resolution = floodOverride
+            ? new FloodResolution
+            {
+                Wound = floodBlackWound ? WoundType.Black : WoundType.White,
+                Secondary = floodBeyondDeath
+                    ? SecondaryDebuffType.BeyondDeath
+                    : SecondaryDebuffType.AllaganField,
+                Truth = floodFake ? FloodTruthState.Fake : FloodTruthState.Real,
+                BlackAntilightSide = floodBlackWest ? ArenaSide.West : ArenaSide.East,
+                SwappedColors = host.Configuration.SwapAntilightColors,
+            }
+            : live;
+
+        if (floodOverride)
+        {
+            ImGui.Indent();
+            _ = ImGui.Checkbox("Black Wound", ref floodBlackWound);
+            ImGui.SameLine();
+            _ = ImGui.Checkbox("Beyond Death", ref floodBeyondDeath);
+            ImGui.SameLine();
+            _ = ImGui.Checkbox("Fake", ref floodFake);
+            ImGui.SameLine();
+            _ = ImGui.Checkbox("Black West", ref floodBlackWest);
+
+            if (ImGui.Button("Cycle all 16 combinations"))
+            {
+                floodCycle = (floodCycle + 1) % 16;
+                floodBlackWound = (floodCycle & 1) != 0;
+                floodBeyondDeath = (floodCycle & 2) != 0;
+                floodFake = (floodCycle & 4) != 0;
+                floodBlackWest = (floodCycle & 8) != 0;
+            }
+
+            ImGui.SameLine();
+            ImGui.TextDisabled($"combination {floodCycle + 1}/16");
+            ImGui.Unindent();
+        }
 
         ImGui.TextUnformatted(
             $"Seed {assignments.Seed}  |  resolves at 55.0s  |  Neo rotation "
             + $"{assignments.NeoRotationDegrees:0} deg");
         ImGui.TextUnformatted(
-            $"Flood: {(briefing.FloodFake ? "FAKE" : "REAL")}  |  Black is "
-            + $"{(briefing.BlackWest ? "West" : "East")}");
-        ImGui.TextUnformatted(
-            $"{role.Key()}: {briefing.WoundText} Wound + {briefing.SecondaryText}");
+            $"{role.Key()}: {resolution.Wound} Wound (drawn {resolution.WoundColor}) + "
+            + $"{resolution.Secondary}  |  Flood {resolution.Truth}");
 
-        ImGui.TextColored(
-            new Vector4(0.85f, 0.75f, 1, 1),
-            $"Required: {briefing.Instruction}");
-        ImGui.TextWrapped(briefing.Explanation);
+        ImGui.TextColored(new Vector4(0.85f, 0.75f, 1, 1), resolution.Cue);
+        ImGui.TextWrapped(resolution.Explanation);
+
+        ImGui.Spacing();
+        foreach (var side in new[] { ArenaSide.West, ArenaSide.East })
+        {
+            var color = resolution.ColorOn(side);
+            var required = side == resolution.RequiredSide;
+            ImGui.TextColored(
+                color == FloodVisualColor.Purple
+                    ? new Vector4(0.64f, 0.33f, 0.95f, 1)
+                    : new Vector4(0.22f, 0.62f, 1.00f, 1),
+                $"  {side.ToString().ToUpperInvariant(),-5} {color.ToString().ToUpperInvariant(),-6} "
+                + $"{resolution.AntilightOn(side)} Antilight"
+                + (required ? "   <- REQUIRED" : string.Empty));
+        }
 
         var player = host.LastPlayer;
         if (!player.IsValid)
@@ -536,32 +600,28 @@ internal sealed class DebugWindow : Window
         var local = Geometry.RotateDegrees(
             player.ArenaPosition,
             -assignments.NeoRotationDegrees);
-        var onCentre = MathF.Abs(local.X) <= Geometry.Epsilon;
-        var standingWest = local.X < 0;
-        var standingIn = onCentre
-            ? "centre line (counts as neither)"
-            : $"{(standingWest == briefing.BlackWest ? "Black" : "White")} "
-                + $"({(standingWest ? "WEST" : "EAST")})";
+        var verdict = resolution.Grade(local.X);
 
         ImGui.TextUnformatted(
             $"Sampled arena ({player.ArenaPosition.X:0.00}, {player.ArenaPosition.Y:0.00})"
             + $"  ->  Neo-local X {local.X:0.000}");
-        ImGui.TextUnformatted($"Standing in: {standingIn}");
+        ImGui.TextUnformatted(verdict.OnCentreLine
+            ? "Standing on: centre line (counts as neither)"
+            : $"Standing in: {verdict.DetectedColor.ToString()!.ToUpperInvariant()} "
+                + $"{verdict.DetectedSide.ToString()!.ToUpperInvariant()} "
+                + $"({verdict.DetectedAntilight} Antilight)");
 
-        var wouldPass = onCentre || standingWest == briefing.StandWest;
-        var inside = KefkaP4Mechanics.IsInsideArena(player.ArenaPosition);
-        if (!inside)
+        if (!KefkaP4Mechanics.IsInsideArena(player.ArenaPosition))
         {
             ImGui.TextColored(new Vector4(1, 0.35f, 0.35f, 1), "Would FAIL: outside arena boundary");
         }
         else
         {
             ImGui.TextColored(
-                wouldPass ? new Vector4(0.35f, 0.95f, 0.45f, 1) : new Vector4(1, 0.35f, 0.35f, 1),
-                wouldPass
+                verdict.Passed ? new Vector4(0.35f, 0.95f, 0.45f, 1) : new Vector4(1, 0.35f, 0.35f, 1),
+                verdict.Passed
                     ? "Would PASS if Flood resolved now."
-                    : $"Would FAIL: wrong Antilight side: needed {briefing.AntilightText} "
-                        + $"({briefing.SideText})");
+                    : $"Would FAIL: {verdict.FailureReason}");
         }
     }
 

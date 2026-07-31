@@ -13,6 +13,7 @@ internal sealed class ArenaOverlayRenderer
     private readonly RenderExceptionLogger errors;
     private readonly ShapeRenderer shapes;
     private readonly GhostRenderer ghosts;
+    private readonly FloodStageRenderer floodStage;
     private readonly ProjectionHelper projection;
 
     public ArenaOverlayRenderer(IGameGui gameGui, IPluginLog log)
@@ -21,6 +22,7 @@ internal sealed class ArenaOverlayRenderer
         projection = new ProjectionHelper(gameGui, errors);
         shapes = new ShapeRenderer(projection);
         ghosts = new GhostRenderer(projection, errors);
+        floodStage = new FloodStageRenderer(projection);
     }
 
     /// <summary>Projection failures recorded during the last drawn frame.</summary>
@@ -65,7 +67,8 @@ internal sealed class ArenaOverlayRenderer
                 Combine(engine.Encounter.ActiveGhosts(time), testGhosts),
                 time,
                 configuration,
-                configuration.ShowMagicTell ? engine.Encounter.CurrentMagicTell(time) : null);
+                configuration.ShowMagicTell ? engine.Encounter.CurrentMagicTell(time) : null,
+                configuration.ShowFloodStage ? engine.Encounter.FloodStageAt(time) : null);
         }
         catch (Exception exception)
         {
@@ -150,7 +153,8 @@ internal sealed class ArenaOverlayRenderer
         IReadOnlyList<SimulatedGhost> activeGhosts,
         double time,
         Configuration configuration,
-        MagicTell? magicTell = null)
+        MagicTell? magicTell = null,
+        FloodStageView? floodStageView = null)
     {
         if (!configuration.OverlayEnabled || !arena.IsInitialized)
         {
@@ -247,6 +251,11 @@ internal sealed class ArenaOverlayRenderer
         if (magicTell is { } tell)
         {
             DrawMagicTell(foreground, arena, tell, configuration);
+        }
+
+        if (floodStageView is { } stage)
+        {
+            floodStage.Draw(foreground, arena, stage, configuration);
         }
 
         if (configuration.ShowDebugCoordinateLabels)

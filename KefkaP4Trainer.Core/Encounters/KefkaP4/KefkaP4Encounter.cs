@@ -223,17 +223,39 @@ public sealed class KefkaP4Encounter
     }
 
     /// <summary>
-    /// The resolved Flood of Naughts instruction for <paramref name="role"/>.
-    /// Built from the same assignment sets <see cref="ResolveFlood"/> grades
-    /// against, so the briefing and the verdict cannot disagree.
+    /// Whether the plugin's Antilight colour assignment is flipped. Set from
+    /// configuration; see <see cref="FloodColors"/> for why it exists.
     /// </summary>
-    public FloodBriefing FloodBriefingFor(PartyRole role) =>
-        new(
-            Assignments.FloodFake,
-            Assignments.BlackWest,
-            Assignments.BlackWoundRoles.Contains(role),
-            Assignments.DeathRoles.Contains(role),
-            Assignments.BlackWest == Assignments.BlackSafeRoles.Contains(role));
+    public bool SwapAntilightColors { get; set; }
+
+    /// <summary>
+    /// The resolved Flood of Naughts answer for <paramref name="role"/>.
+    /// Every consumer - cue, overlay, debug panel and grader - reads this, so
+    /// none of them can disagree about side or colour.
+    /// </summary>
+    public FloodResolution FloodResolutionFor(PartyRole role) =>
+        new()
+        {
+            Wound = Assignments.BlackWoundRoles.Contains(role) ? WoundType.Black : WoundType.White,
+            Secondary = Assignments.DeathRoles.Contains(role)
+                ? SecondaryDebuffType.BeyondDeath
+                : SecondaryDebuffType.AllaganField,
+            Truth = Assignments.FloodFake ? FloodTruthState.Fake : FloodTruthState.Real,
+            BlackAntilightSide = Assignments.BlackWest ? ArenaSide.West : ArenaSide.East,
+            SwappedColors = SwapAntilightColors,
+        };
+
+    /// <summary>
+    /// The Neo Exdeath stand-in and its two Antilight banners, or null outside
+    /// the Flood window.
+    /// </summary>
+    public FloodStageView? FloodStageAt(double time) =>
+        time is >= 47.5 and < 55
+            ? new FloodStageView(
+                FloodResolutionFor(PlayerRole),
+                Assignments.NeoRotationDegrees,
+                ShowAntilights: time >= 49.7)
+            : null;
 
     public string CurrentCue(double time)
     {
@@ -244,10 +266,10 @@ public sealed class KefkaP4Encounter
 
         if (time is >= 49.7 and < 55)
         {
-            // The side is stated outright. Deriving it in the moment needs the
-            // wound colour, the Field/Death icon and the fake flag at once, and
-            // "match your own colour" is wrong half the time.
-            return FloodBriefingFor(PlayerRole).Instruction;
+            // Colour and side lead. The canonical Black/White name alone made
+            // the player translate an internal name into a visible telegraph
+            // under a 5.3s cast, which is exactly where this misreads.
+            return FloodResolutionFor(PlayerRole).Cue;
         }
 
         return string.Empty;
@@ -461,11 +483,16 @@ public sealed class KefkaP4Encounter
 
     private void AddFloodHalf(bool west, double time, float rotation)
     {
-        var isBlack = west == Assignments.BlackWest;
+        var side = west ? ArenaSide.West : ArenaSide.East;
+        var resolution = FloodResolutionFor(PlayerRole);
+        var isBlack = resolution.AntilightOn(side) == AntilightType.Black;
         shapes.Add(new ArenaShape
         {
             Kind = ShapeKind.Rectangle,
-            Label = isBlack ? "Black Antilight" : "White Antilight",
+            // The colour is in the label so the renderer, the debug list and
+            // the cue all name the same thing the player is looking at.
+            Label = $"{resolution.ColorOn(side).ToString().ToUpperInvariant()} "
+                + $"{(isBlack ? "Black" : "White")} Antilight ({side.ToString().ToUpperInvariant()})",
             Phase = ShapePhase.Information,
             StartsAt = time,
             EndsAt = 55,
@@ -481,7 +508,7 @@ public sealed class KefkaP4Encounter
         SetPositions(
             role =>
             {
-                var west = Assignments.BlackWest == Assignments.BlackSafeRoles.Contains(role);
+                var west = FloodResolutionFor(role).RequiredSide == ArenaSide.West;
                 return KefkaP4Positions.Flood(role, west, Assignments.NeoRotationDegrees);
             },
             time,
@@ -502,16 +529,12 @@ public sealed class KefkaP4Encounter
 
         string? reason = BoundaryReason(player);
         var local = Geometry.RotateDegrees(player.ArenaPosition, -Assignments.NeoRotationDegrees);
-        var briefing = FloodBriefingFor(PlayerRole);
-        var expectedWest = briefing.StandWest;
-        if (reason is null
-            && ((expectedWest && local.X > Geometry.Epsilon)
-                || (!expectedWest && local.X < -Geometry.Epsilon)))
+        var verdict = FloodResolutionFor(PlayerRole).Grade(local.X);
+        if (reason is null && !verdict.Passed)
         {
-            // Naming the required side makes a failed pull diagnosable without
-            // re-deriving the assignment from the icons afterwards.
-            reason = $"wrong Antilight side: needed {briefing.AntilightText} "
-                + $"({briefing.SideText})";
+            // Names both what was needed and what was taken, in the colours the
+            // player could actually see.
+            reason = $"wrong Antilight: {verdict.FailureReason}";
         }
 
         return Result("Flood of Naughts", time, reason, player, pullNumber);

@@ -50,10 +50,10 @@ public sealed class FloodOfNaughtsTests
             var encounter = new KefkaP4Encounter(seed, PartyRole.M1);
             foreach (var role in PartyRoles.All)
             {
-                var briefing = encounter.FloodBriefingFor(role);
+                var briefing = encounter.FloodResolutionFor(role);
                 Assert.Equal(
                     encounter.Assignments.BlackSafeRoles.Contains(role),
-                    briefing.StandInBlack);
+                    briefing.StandsInBlack);
             }
         }
     }
@@ -103,13 +103,13 @@ public sealed class FloodOfNaughtsTests
     {
         var (seed, role) = FindCase(floodFake, blackWound, beyondDeath);
         var encounter = new KefkaP4Encounter(seed, role);
-        var briefing = encounter.FloodBriefingFor(role);
+        var briefing = encounter.FloodResolutionFor(role);
 
-        Assert.Equal(floodFake, briefing.FloodFake);
-        Assert.Equal(blackWound, briefing.HasBlackWound);
-        Assert.Equal(beyondDeath, briefing.HasBeyondDeath);
-        Assert.Equal(expectedStandInBlack, briefing.StandInBlack);
-        Assert.Equal(expectedStandInBlack == blackWound, briefing.MatchesWoundColour);
+        Assert.Equal(floodFake, briefing.IsFake);
+        Assert.Equal(blackWound, (briefing.Wound == WoundType.Black));
+        Assert.Equal(beyondDeath, (briefing.Secondary == SecondaryDebuffType.BeyondDeath));
+        Assert.Equal(expectedStandInBlack, briefing.StandsInBlack);
+        Assert.Equal(expectedStandInBlack == blackWound, briefing.SameColourRule);
     }
 
     /// <summary>
@@ -122,14 +122,14 @@ public sealed class FloodOfNaughtsTests
     {
         var (seed, role) = FindCase(floodFake: false, blackWound: true, beyondDeath: false);
         var encounter = new KefkaP4Encounter(seed, role);
-        var briefing = encounter.FloodBriefingFor(role);
+        var briefing = encounter.FloodResolutionFor(role);
 
-        Assert.False(briefing.StandInBlack);
-        Assert.False(briefing.MatchesWoundColour);
-        Assert.Equal("White", briefing.AntilightText);
+        Assert.False(briefing.StandsInBlack);
+        Assert.False(briefing.SameColourRule);
+        Assert.Equal(AntilightType.White.ToString(), briefing.RequiredAntilight.ToString());
 
         // Standing in the black (purple) half is the failure that was observed.
-        var blackSide = briefing.BlackWest ? WestLocalX : EastLocalX;
+        var blackSide = (briefing.BlackAntilightSide == ArenaSide.West) ? WestLocalX : EastLocalX;
         Assert.False(Resolve(encounter, blackSide).Passed);
         Assert.True(Resolve(encounter, -blackSide).Passed);
     }
@@ -150,16 +150,16 @@ public sealed class FloodOfNaughtsTests
             foreach (var role in PartyRoles.All)
             {
                 var encounter = new KefkaP4Encounter(seed, role);
-                var briefing = encounter.FloodBriefingFor(role);
+                var briefing = encounter.FloodResolutionFor(role);
                 rotationsSeen.Add(encounter.Assignments.NeoRotationDegrees);
-                fakeStatesSeen.Add(briefing.FloodFake);
+                fakeStatesSeen.Add(briefing.IsFake);
 
-                var correct = briefing.StandWest ? WestLocalX : EastLocalX;
+                var correct = (briefing.RequiredSide == ArenaSide.West) ? WestLocalX : EastLocalX;
                 Assert.True(Resolve(encounter, correct).Passed, briefing.Explanation);
 
                 var wrong = Resolve(encounter, -correct);
                 Assert.False(wrong.Passed, briefing.Explanation);
-                Assert.Contains(briefing.AntilightText, wrong.Reason, StringComparison.Ordinal);
+                Assert.Contains(briefing.RequiredAntilight.ToString(), wrong.Reason, StringComparison.Ordinal);
             }
         }
 
@@ -190,8 +190,8 @@ public sealed class FloodOfNaughtsTests
     public void OutsideTheArenaFailsOnTheBoundaryReason()
     {
         var encounter = new KefkaP4Encounter(8675309, PartyRole.M1);
-        var briefing = encounter.FloodBriefingFor(PartyRole.M1);
-        var correctSign = briefing.StandWest ? -1f : 1f;
+        var briefing = encounter.FloodResolutionFor(PartyRole.M1);
+        var correctSign = (briefing.RequiredSide == ArenaSide.West) ? -1f : 1f;
         var result = ResolveAt(
             encounter,
             Geometry.RotateDegrees(
@@ -227,19 +227,19 @@ public sealed class FloodOfNaughtsTests
                     continue;
                 }
 
-                var briefing = encounter.FloodBriefingFor(pair.Key);
+                var briefing = encounter.FloodResolutionFor(pair.Key);
                 var local = Geometry.RotateDegrees(
                     pair.Value,
                     -encounter.Assignments.NeoRotationDegrees);
-                Assert.Equal(briefing.StandWest, local.X < 0);
+                Assert.Equal((briefing.RequiredSide == ArenaSide.West), local.X < 0);
             }
 
             // ...and the player's own destination still has to agree.
-            var playerBriefing = encounter.FloodBriefingFor(encounter.PlayerRole);
+            var playerBriefing = encounter.FloodResolutionFor(encounter.PlayerRole);
             var playerLocal = Geometry.RotateDegrees(
                 encounter.RequiredPosition!.Value,
                 -encounter.Assignments.NeoRotationDegrees);
-            Assert.Equal(playerBriefing.StandWest, playerLocal.X < 0);
+            Assert.Equal((playerBriefing.RequiredSide == ArenaSide.West), playerLocal.X < 0);
         }
     }
 
