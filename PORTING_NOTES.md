@@ -273,15 +273,15 @@ Audited 2026-07-31 against the local `Waju-Sims/` reference clone (upstream
 | Mysterious Magic 1/2/3 | `cast_mm` / `move_mm_dodge` / `mm_hit` | `KefkaP4Encounter.CastMysteriousMagic` etc. | 8.0 / 22.9 / 38.1 | Ported | `TimelineTests`, `GeometryTests` |
 | Grand Cross 1/2 debuffs | `cast_gc`, `neo_debuffs` | `AssignGrandCross` | 12.6 / 27.6 | Ported | `AssignmentTests` |
 | Grand Cross 3 wounds | `neo_debuffs_3` | `AssignGrandCrossThree` | 44.0 | Ported | `FloodOfNaughtsTests` |
-| Chaos (Entropy/Dynamic Fluid) | `cast_chaos`, `chaos_debuffs` | `AssignChaos` | 18.4 / 34.4 | Ported | — |
+| Chaos (Entropy/Dynamic Fluid) | `cast_chaos`, `chaos_debuffs` | `AssignChaos` | 18.4 / 34.4 | **Verified** | `RemainingMechanicParityTests` |
 | **Flood of Naughts** | `flood_cast`, `move_flood_dodge`, `flood_hit`, GC3 setup, `neo_exdeath.tscn` | `FloodResolution`, `FloodStage`, `AddFloodHalf`, `MoveFlood`, `ResolveFlood` | 55.0 | **Logic verified; icon and colour NOT proven** | `FloodOfNaughtsTests`, `FloodVisualMappingTests` - see the per-layer table below |
 | Short/Long GC debuffs | `move_short_debuff`, `short_debuff_hit`, `long_debuff_hit` | `MoveShortDebuffs`, `ResolveDebuffs` | 63.8 / 88.7 | Ported | `MechanicSemanticsTests` |
 | Acceleration Bomb | `short_debuff_hit` velocity check | `PlayerState.IsMoving` | 63.8 / 88.7 | Verified | `MechanicSemanticsTests` (strict 0.1 boundary) |
-| Thrumming Thunder III | `cast_tt`, `move_tt_dodge`, `tt_hit` | `*ThrummingThunder` | 71.4 | Ported | — |
+| Thrumming Thunder III | `cast_tt`, `move_tt_dodge`, `tt_hit` | `*ThrummingThunder` | 71.4 | **Verified** | `RemainingMechanicParityTests` |
 | Cursed Shriek 1/2 | `shriek_1_hit`, `shriek_2_hit`, `check_if_facing` | `KefkaP4Gaze` | 72.8 / 96.7 | Verified | `GhostAndGazeTests` |
-| Entropy twisters | `snapshot_inferno`, `inferno_dodge`, `inferno_hit` | `*Inferno` | 83.5 | Ported | — |
-| Blizzard Blowout III | `cast_bb`, `bb_hit` | `*BlizzardBlowout` | 89.4 | Ported | — |
-| Mana Release / Dynamic Fluid | `cast_mr`, `show_mr_tele`, `move_mr_dodge`, `mr_hit` | `*ManaRelease` | 107.5 | Ported | — |
+| Entropy twisters | `snapshot_inferno`, `inferno_dodge`, `inferno_hit` | `*Inferno` | 83.5 | **Verified** | `RemainingMechanicParityTests` |
+| Blizzard Blowout III | `cast_bb`, `bb_hit` | `*BlizzardBlowout` | 89.4 | **Verified** | `RemainingMechanicParityTests` |
+| Mana Release / Dynamic Fluid | `cast_mr`, `show_mr_tele`, `move_mr_dodge`, `mr_hit`, `tsunami_hit` | `*ManaRelease` | 107.5 | **Verified** | `RemainingMechanicParityTests` |
 | Ultima Upsurge | `cast_ultima`, `kefka_ultima_finish` | `CastUltima`, `UltimaFinish` | 76.9 / 115.6 | Presentation only | — |
 | Allagan Field / Beyond Death | `neo_debuffs_3` | debuff assignment only | 44.0 | Presentation only | — |
 | Neo relocate / fade | `neo_fade_out`, `neo_move_fade_in` | `NeoFade`, `NeoRelocate` | 46.0 / 47.5 | Presentation only | — |
@@ -468,3 +468,34 @@ Overlay: the two halves are drawn in real blue and purple and labelled
 edge from 47.5s with a REAL/FAKE ring, and from 49.7s the two Antilight banners
 sit beside it at local X ±17 in their own colours, the required one ringed in
 white and tagged `<- GO HERE`.
+
+
+### Preserved source quirks
+
+Two behaviours look like bugs and are reproduced deliberately, with tests that
+fail if anyone "fixes" them:
+
+- **Twister polarity is inverted between the two Chaos mechanics.**
+  `inferno_hit` draws a donut when Entropy is fake and a circle when real;
+  `tsunami_hit` draws a *circle* when Dynamic Fluid is fake and a donut when
+  real. Waju additionally labels the Dynamic Fluid donut `(Twister, Fake)` even
+  though that branch fires when the mechanic is **real**. The label is carried
+  over verbatim. See `DynamicFluidTwisterPolarityIsInvertedRelativeToEntropy`.
+
+- **Mana Release flips against the telegraph, not the earlier resolution.**
+  `tt_hit` and `bb_hit` write their flipped geometry to *local* variables, with
+  a source comment saying this is so the originals survive for Mana Release.
+  `mr_hit` therefore re-flips only when its own fake flag differs from the
+  Mysterious Magic one. See
+  `ManaReleaseFlipsRelativeToTheTelegraphNotTheEarlierResolution`.
+
+### Co-healer calibration note
+
+The scripted phase damage totals roughly 336k per player against a 148k
+reference pool, so **no single healer of either profile can complete the phase
+alone** — correctly, since a real duo spends far more than one shield or party
+heal per raidwide. The co-healer's assistance levels are therefore validated on
+time-to-first-death rather than survivor count, and Standard deliberately covers
+only alternate raidwides so the ones in between remain the player's
+responsibility. Strong covers everything and can carry the phase; that is what
+the setting is for.
