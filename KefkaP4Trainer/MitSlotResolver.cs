@@ -36,7 +36,8 @@ internal static class MitSlotResolver
     /// </summary>
     public static MitSlot? Resolve(Configuration configuration)
     {
-        var job = Services.ClientState.LocalPlayer?.ClassJob.RowId;
+        // LocalPlayer lives on the object table, not the client state.
+        var job = Services.ObjectTable.LocalPlayer?.ClassJob.RowId;
         if (job is not { } jobId)
         {
             return null;
@@ -60,7 +61,8 @@ internal static class MitSlotResolver
     public static bool NeedsChoice(out bool tankPair)
     {
         tankPair = false;
-        var job = Services.ClientState.LocalPlayer?.ClassJob.RowId;
+        // LocalPlayer lives on the object table, not the client state.
+        var job = Services.ObjectTable.LocalPlayer?.ClassJob.RowId;
         if (job is not { } jobId)
         {
             return false;
