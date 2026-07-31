@@ -26,6 +26,7 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
     private readonly ResultOverlayRenderer resultOverlayRenderer;
     private readonly CastBarRenderer castBarRenderer;
     private readonly CountdownRenderer countdownRenderer;
+    private readonly SoundCueService soundCues = new();
     private bool disposed;
     private bool pausedForMissingPlayer;
     private bool updateFaulted;
@@ -163,6 +164,7 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
         gameStateReader.ResetVelocitySample();
         pausedForMissingPlayer = false;
         updateFaulted = false;
+        soundCues.Reset();
         Engine.Start(Configuration.CountdownSeconds);
         SynchronizeAutomaticRestartSeed();
         return true;
@@ -344,6 +346,7 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
             }
 
             SynchronizeAutomaticRestartSeed();
+            soundCues.Update(Engine, Configuration);
             var pullBeforeUpdate = Engine.PullNumber;
             Engine.Update(elapsedSeconds, LastPlayer);
             if (Engine.PullNumber != pullBeforeUpdate)

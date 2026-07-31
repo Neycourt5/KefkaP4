@@ -457,6 +457,42 @@ internal sealed class ConfigWindow : Window
             ImGui.Unindent();
         }
 
+        var soundCues = config.PlaySoundCues;
+        if (ImGui.Checkbox("Play sound cues", ref soundCues))
+        {
+            config.PlaySoundCues = soundCues;
+            changed = true;
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "Plays a game alert as each cast begins and again as it finishes.\n"
+                + "These are the built-in <se.N> alerts, not the boss's own audio,\n"
+                + "which is not reachable from a plugin.");
+        }
+
+        if (config.PlaySoundCues)
+        {
+            ImGui.Indent();
+
+            var startSound = config.CastStartSound;
+            if (ImGui.SliderInt("Cast start sound", ref startSound, 1, 16))
+            {
+                config.CastStartSound = startSound;
+                changed = true;
+            }
+
+            var finishSound = config.CastFinishSound;
+            if (ImGui.SliderInt("Cast finish sound", ref finishSound, 1, 16))
+            {
+                config.CastFinishSound = finishSound;
+                changed = true;
+            }
+
+            ImGui.Unindent();
+        }
+
         var countdown = config.ShowCountdown;
         if (ImGui.Checkbox("Show large countdown", ref countdown))
         {

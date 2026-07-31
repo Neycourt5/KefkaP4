@@ -143,6 +143,14 @@ public sealed class Configuration : IPluginConfiguration
 
     public float CastBarScale { get; set; } = 1;
 
+    // Built-in alert indices, matching the <se.N> chat macros. The real ability
+    // audio is not reachable: it lives in .scd files inside the game archives.
+    public bool PlaySoundCues { get; set; }
+
+    public int CastStartSound { get; set; } = 1;
+
+    public int CastFinishSound { get; set; } = 4;
+
     public bool ShowCountdown { get; set; } = true;
 
     public float CountdownScale { get; set; } = 1;
