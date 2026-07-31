@@ -513,3 +513,137 @@ IN-GAME CHECKLIST (Flood, highest value first)
       "Swap Antilight colours"; nothing else needs changing.
   [5] Walk across the centre line and confirm Would PASS/FAIL flips and names
       both the needed and the taken colour.
+
+
+====================================================================
+2026-07-31 (session 4)  Co-healer, remaining parity fixtures
+====================================================================
+
+--------------------------------------------------------------------
+A. STATE VERIFIED BEFORE ANY CHANGE
+--------------------------------------------------------------------
+
+  git status --short --branch          ## main...origin/main  (clean)
+  git rev-list --left-right --count    behind=0 ahead=0
+  head                                 4a2b478
+  tags                                 v0.1.8.0 latest
+  csproj <Version>                     0.1.9.0
+  repo.json AssemblyVersion            0.1.8.0  (correct: its links point at the
+                                       real v0.1.8.0 release asset)
+  Waju-Sims/waju-sim                   present
+  Waju-Sims/DalamudPlugin              absent (deleted by the user; good)
+  git check-ignore -v Waju-Sims/       .gitignore:52
+
+No version change this session: 0.1.9.0 is still unreleased, so there is
+nothing to bump, and repo.json stays on 0.1.8.0 until the release workflow runs.
+
+--------------------------------------------------------------------
+B. VIRTUAL CO-HEALER
+--------------------------------------------------------------------
+
+Classification: WHM/AST -> virtual BARRIER co-healer; SCH/SGE -> virtual PURE
+co-healer. Non-healer jobs get none.
+
+Profile behaviour:
+  barrier  Sacred Soil (mit) + Succor (shield) pre-cast, Kerachole regen,
+           Lustrate emergency
+  pure     Plenary Indulgence (mit) pre-cast, Cure III post-damage heal,
+           Medica III regen, Benediction emergency
+
+Everything is emitted as ObservedHealerAction through the SAME
+HealerActionApplier a real observed press uses. HP is never touched directly
+and boss damage is never reduced; all contribution appears in the action log
+and party history attributed to "co-healer (barrier|pure)".
+
+TWO FINDINGS FROM THE TESTS:
+
+  1. Presets escalate by CATEGORY, not magnitude. Scaling one healer's numbers
+     up and down would teach the player to expect heal sizes that no real
+     co-healer produces.
+
+  2. REAL DESIGN DEFECT, caught only by running the full phase: Standard
+     originally answered EVERY raidwide with mitigation + shield + heal and
+     carried the pull outright. That is a duo's output, not one healer's.
+     Fixed with CoverageStride: Standard takes alternate raidwides and the ones
+     in between are the player's, which is how a real pair splits cooldowns.
+     Strong keeps stride 1 and can carry the phase - that is its purpose.
+
+CALIBRATION NOTE: the scripted phase totals ~336k per player against a 148k
+reference pool, so NO lone healer completes it. Assistance levels are therefore
+validated on time-to-first-death, not survivor count.
+
+Determinism: no randomness; fired-key set against replay; half-open
+(previousTime, time] window so a scrub backwards emits nothing; Reset() clears.
+
+Tests: 19 in VirtualCoHealerTests covering classification, all five levels,
+both profiles, determinism, replay, scrub, reset, emergency threshold and
+cooldown, dead-target skipping, attribution, and dedup keyspace isolation.
+
+--------------------------------------------------------------------
+C. REMAINING PARITY FIXTURES
+--------------------------------------------------------------------
+
+Chaos, Thrumming Thunder III, Entropy, Blizzard Blowout III and Mana Release
+pinned against p4_seq.gd. All nine fixtures passed on the FIRST run, so this
+confirms the existing port rather than correcting it. Matrix rows promoted from
+Ported to Verified.
+
+Waju functions read: chaos_debuffs, tt_hit, bb_hit, inferno_hit, inferno_dodge,
+snapshot_inferno, snapshot_tsunami, mr_hit, tsunami_hit, cast_bb.
+
+Constants confirmed: INFERNO_INNER 11.5, INFERNO_OUTTER 60.0,
+INFERNO_LIFETIME 0.8, INFERNO_LONG 61 / SHORT 45, TSUNAMI_LONG 84 / SHORT 68.
+
+TWO SOURCE QUIRKS now asserted so they cannot be "tidied":
+
+  1. Twister polarity is INVERTED between the two Chaos mechanics.
+     inferno_hit: fake -> donut, real -> circle.
+     tsunami_hit: fake -> CIRCLE, real -> DONUT.
+     Waju also labels the Dynamic Fluid donut "(Twister, Fake)" on the branch
+     that fires when the mechanic is REAL. The label is carried over verbatim.
+
+  2. Mana Release flips against the TELEGRAPH, not the earlier resolution.
+     tt_hit and bb_hit write flipped geometry to locals, with a source comment
+     saying it is so the originals survive for Mana Release. mr_hit therefore
+     re-flips only when its own fake flag differs from the Mysterious Magic one.
+
+--------------------------------------------------------------------
+D. BUILDS AND TESTS
+--------------------------------------------------------------------
+
+  session 3 end            213/213
+  + co-healer              236/236  (1 failure first: see B.2)
+  + remaining parity       245/245
+  final build              0 Warning(s) 0 Error(s), TreatWarningsAsErrors
+  package                  latest.zip produced
+
+--------------------------------------------------------------------
+E. COMMITS (all pushed)
+--------------------------------------------------------------------
+
+  f647978  feat: add the deterministic complementary co-healer
+  335b544  test: pin the last five mechanics against p4_seq.gd
+
+  4a2b478..335b544 main -> main
+
+--------------------------------------------------------------------
+F. NOT DONE
+--------------------------------------------------------------------
+
+  Audio audit, healer-action-id Lumina validation report, native party-list and
+  debuff-bar anchoring, multiplayer. Nothing in the tree for any of them beyond
+  the plan.
+
+--------------------------------------------------------------------
+G. ADDITIONS TO THE IN-GAME CHECKLIST
+--------------------------------------------------------------------
+
+  [9]  /kefkap4 healer -> "Co-healer". On a healer job, confirm the complement
+       is correct (WHM/AST should offer a barrier co-healer, SCH/SGE a pure
+       one) and that switching Assistance changes the summary line.
+  [10] Start a pull with healer practice on and Standard assistance. Confirm
+       co-healer shields/mitigation appear in the action log attributed to
+       "co-healer", landing about 2s BEFORE each covered raidwide, and that
+       roughly half the raidwides are left uncovered.
+  [11] Confirm the party still loses someone on Standard without your input -
+       that is the intended behaviour, not a bug.

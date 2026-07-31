@@ -1,13 +1,13 @@
 KefkaP4Trainer — WORK PLAN
-Last updated: 2026-07-31 (session 2)
-Baseline: main @ 3e057e6, version 0.1.9.0 (unreleased; v0.1.8.0 is the last tag)
+Last updated: 2026-07-31 (session 4)
+Baseline: main @ 335b544, version 0.1.9.0 (unreleased; v0.1.8.0 is the last tag)
 
 ====================================================================
 CURRENT STATUS
 ====================================================================
 
 The plugin builds clean (0 warnings, TreatWarningsAsErrors on) against
-Dalamud 15.0.3 / API level 15, and 180/180 core tests pass.
+Dalamud 15.0.3 / API level 15, and 245/245 core tests pass.
 
 Session 1 covered repository recovery, the Waju timeline/Flood parity audit
 and the element-tell placement fix. Session 2 bumped the version to 0.1.9.0,
@@ -15,8 +15,11 @@ pushed session 1 to origin, and built the healer feature from the core
 outward: virtual party health, the FF Logs damage dataset, the healer action
 model/database/applier, and the plugin observer plus simulated party panel.
 
-Still NOT started: the complementary virtual co-healer, native party-list
-anchoring, HUD debuff anchoring, audio expansion, and all multiplayer work.
+Session 3 reopened Flood as a visual-semantic mapping problem. Session 4 added
+the deterministic co-healer and pinned the last five mechanics.
+
+Still NOT started: audio expansion, the healer-action-id validation report,
+native party-list and HUD debuff anchoring, and all multiplayer work.
 
 Do not trust any claim below that is not marked DONE.
 
@@ -53,11 +56,14 @@ MILESTONES
        ground anchor and stacking in screen space. Configurable heights plus
        optional horizontal spread.
 
-[PARTIAL] M5  Parity fixtures for remaining mechanics
-       Verified + pinned: timeline, Flood, gaze/Cursed Shriek, Acceleration
-       Bomb boundary. Traced and implemented but WITHOUT dedicated fixtures:
-       Chaos debuffs, Thrumming Thunder, Entropy twisters, Blizzard Blowout,
-       Mana Release. See the parity matrix table for the per-mechanic status.
+[DONE] M5  Parity fixtures for every mechanic
+       All mechanics are now Verified in the parity matrix. Chaos, Thrumming
+       Thunder, Entropy, Blizzard Blowout and Mana Release were pinned in
+       session 4; all nine fixtures passed first run, confirming rather than
+       correcting. Two source quirks are asserted so they cannot be tidied
+       away: inverted twister polarity between Entropy and Dynamic Fluid, and
+       Mana Release flipping against the telegraph rather than the earlier
+       resolution.
 
 [DONE] M7  Virtual party health model
        Eight slots, HP/shields/multiplicative mitigation/simulation-time
@@ -81,7 +87,11 @@ MILESTONES
        beside the NATIVE party list is not started.
 
 [NOT STARTED] M6  Debuff-bar HUD anchoring
-[NOT STARTED] M11 One-healer complementary co-healer
+[DONE] M11 One-healer complementary co-healer
+       WHM/AST get a barrier co-healer, SCH/SGE a pure one. Runs through the
+       same applier a real press does; never touches HP or reduces boss damage.
+       Standard covers ALTERNATE raidwides so the rest stay the player's - the
+       first cut covered every one and carried the pull outright.
 [NOT STARTED] M12 Countdown / targetable audio expansion
 [NOT STARTED] M13 Multiplayer protocol + loopback
 [NOT STARTED] M14 WebSocket relay
@@ -111,15 +121,13 @@ healer feature.
 
 If no game is available, the next implementable slices in dependency order:
 
-  1. M11 co-healer. The applier already routes real and virtual actions
-     through one path, so a virtual co-healer is a scheduler emitting
-     ObservedHealerAction values with SourceName "co-healer". Fully testable
-     without a game.
-  2. M5 remaining parity fixtures (Chaos, Thrumming Thunder, Entropy,
-     Blizzard Blowout, Mana Release) to promote them from Ported to Verified.
-  3. M12 audio: audit the existing SoundCueService for duplicate playback
-     across pause/resume/scrub, then add distinct countdown and targetable
-     cues driven by the authoritative timeline event.
+  1. M12 audio: audit SoundCueService for duplicate playback across
+     pause/resume/scrub, then add distinct countdown ticks, a pull cue and a
+     separate targetable cue driven by the authoritative timeline event.
+  2. A Lumina validation report for the healer action ids, mirroring what the
+     status icon atlas already does - resolve each id's name from the Action
+     sheet and list the disagreements.
+  3. M6/M8 read-only native party-list and debuff-bar anchoring investigation.
 
 Do NOT start multiplayer (M13/M14) yet. The virtual party and action-event
 shapes are new and still likely to move; freezing them into a wire protocol
