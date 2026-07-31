@@ -1,0 +1,124 @@
+KefkaP4Trainer — WORK PLAN
+Last updated: 2026-07-31
+Baseline at time of writing: main @ 44661ce (three commits past the v0.1.8.0 release tag)
+
+====================================================================
+CURRENT STATUS
+====================================================================
+
+The plugin builds clean (0 warnings, TreatWarningsAsErrors on) against
+Dalamud 15.0.3 / API level 15, and 109/109 core tests pass.
+
+This session covered repository recovery, the Waju parity audit for the
+timeline and Flood of Naughts, the Flood investigation, and the element-tell
+placement fix. The large new feature areas in the continuation prompt —
+healer simulation, multiplayer, audio expansion and HUD anchoring — are NOT
+started. Nothing about them exists in the tree beyond this plan.
+
+Do not trust any claim below that is not marked DONE.
+
+====================================================================
+MILESTONES
+====================================================================
+
+[DONE] M0  Git recovery
+       main == origin/main == fd0cc53 at session start, clean tree, zero
+       untracked files, behind=0 ahead=0. Nothing needed preserving or
+       integrating. This PC was already current.
+
+[DONE] M1  Waju reference directory ignored
+       Waju-Sims/ was ALREADY ignored (.gitignore:52) and had NEVER been
+       tracked. No `git rm -r --cached` was required. Verified with
+       `git log --all -- Waju-Sims` (empty) and `git check-ignore -v`.
+
+[DONE] M2  Timeline parity audit
+       All 50 method-track events in p4_main.tscn's p4_anim compared against
+       KefkaP4Timeline.Events. Exact 1:1 match on time, order and integer
+       argument. Pinned by WajuTimelineParityTests.
+
+[DONE] M3  Flood of Naughts investigation
+       No defect in the assignment, side selection, bot movement or grading —
+       all four match p4_seq.gd exactly. The defect was presentational: the
+       trainer never stated the resolved side. See WORK_PROGRESS.txt and the
+       parity matrix in PORTING_NOTES.md for the full derivation.
+       FloodBriefing now resolves it once and drives cue + failure text +
+       debug panel from one value.
+
+[DONE] M4  Element tell placement
+       Lightning and ice badges now project from separate world anchors
+       (default 4.2y and 1.2y above the arena floor) instead of sharing one
+       ground anchor and stacking in screen space. Configurable heights plus
+       optional horizontal spread.
+
+[PARTIAL] M5  Parity fixtures for remaining mechanics
+       Verified + pinned: timeline, Flood, gaze/Cursed Shriek, Acceleration
+       Bomb boundary. Traced and implemented but WITHOUT dedicated fixtures:
+       Chaos debuffs, Thrumming Thunder, Entropy twisters, Blizzard Blowout,
+       Mana Release. See the parity matrix table for the per-mechanic status.
+
+[NOT STARTED] M6  Debuff-bar HUD anchoring
+[NOT STARTED] M7  Virtual party health model
+[NOT STARTED] M8  Party-list overlay
+[NOT STARTED] M9  Damage-event dataset + FF Logs calibration
+[NOT STARTED] M10 Healer action observation
+[NOT STARTED] M11 One-healer complementary co-healer
+[NOT STARTED] M12 Countdown / targetable audio expansion
+[NOT STARTED] M13 Multiplayer protocol + loopback
+[NOT STARTED] M14 WebSocket relay
+[NOT STARTED] M15 In-game verification of this session's changes
+
+====================================================================
+CURRENT BLOCKER
+====================================================================
+
+None technical. The blocker is verification: every change this session is
+proven only by unit tests and a clean compile. Nothing has been loaded into
+FFXIV. M15 gates confidence in M3 and M4 specifically, because both change
+what the player sees.
+
+A second, softer blocker for M10: it is NOT yet established which healer
+actions can be observed safely under API 15. Casted actions are reachable via
+battle-character casting state, but most healer oGCDs and instants are not
+casts. Until that investigation is done, M7–M11 cannot be scoped honestly.
+
+====================================================================
+EXACT NEXT TASK
+====================================================================
+
+Load the built DLL and verify M3 and M4 in game (see README "Load as a
+development plugin"). Specifically:
+
+  1. /kefkap4 debug -> "Flood of Naughts" section. Scrub to ~50s paused.
+     Confirm the stated side matches the icons you actually hold, and that
+     "Would PASS/FAIL" flips as you cross the arena centre line.
+  2. Watch a Mysterious Magic cast and confirm lightning sits around Kefka's
+     shoulders and ice around his knees, and that the gap survives pitching
+     the camera down. Tune Settings -> Lightning/Ice height if the defaults
+     miss the model — they were chosen from arena scale, not from measuring
+     Kefka, and are the most likely thing to need adjustment.
+
+Then pick up M6 or M10 (both are investigation-first, and M10's outcome
+determines whether M7–M11 are worth the size they imply).
+
+====================================================================
+RESUME HERE
+====================================================================
+
+Repo:        d:\Users\acourtney\OneDrive - Monitor Technologies, LLC\Documents\KefkaP4
+Branch:      main (3 commits ahead of origin/main — NOT yet pushed)
+Layout:      FLAT. There is no DalamudPlugin/ folder in this repo.
+             Waju-Sims/DalamudPlugin/ is a STALE 2026-07-30 copy. Never edit it.
+Reference:   Waju-Sims/waju-sim/scenes/dmu/p4/{p4_seq.gd,p4_pos.gd,p4_main.tscn}
+
+Build (needs Dalamud dev libs):
+  export DALAMUD_HOME=<dir containing Dalamud.dll>
+  dotnet test  KefkaP4Trainer.Core.Tests/KefkaP4Trainer.Core.Tests.csproj -c Release
+  dotnet build KefkaP4Trainer/KefkaP4Trainer.csproj -c Release -p:Platform=x64
+
+Note: the .NET 10 SDK on this machine is NOT on PATH. It lives at
+  %LOCALAPPDATA%\Microsoft\dotnet
+Add it to PATH and set DOTNET_ROOT to the same directory, or dotnet resolves
+to the runtime-only install in Program Files and reports "No .NET SDKs found".
+
+Output DLL:  KefkaP4Trainer\bin\x64\Release\KefkaP4Trainer.dll
+Package:     KefkaP4Trainer\bin\x64\Release\KefkaP4Trainer\latest.zip

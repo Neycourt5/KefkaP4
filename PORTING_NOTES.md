@@ -257,3 +257,107 @@ scenes reference P4 PNGs, fonts, shaders, arena textures, and model assets.
 There is no asset provenance manifest. The plugin therefore does not copy
 embedded models or absent game-derived artwork. It renders primitive geometry
 and clearly labelled colored placeholder status icons.
+
+## Parity matrix
+
+Audited 2026-07-31 against the local `Waju-Sims/` reference clone (upstream
+`WCGH/Waju-Sims`, at `c1145bc`). Status values:
+
+- **Verified** — traced to the Waju source and pinned by a fixture test.
+- **Ported** — traced and implemented, no dedicated fixture yet.
+- **Presentation only** — Waju has no grading for it, so neither do we.
+
+| Mechanic | Waju source | C# destination | Time | Status | Fixture |
+| --- | --- | --- | --- | --- | --- |
+| Whole method timeline | `p4_main.tscn` `p4_anim` tracks | `KefkaP4Timeline.Events` | 3.3–120.3 | Verified | `WajuTimelineParityTests` |
+| Mysterious Magic 1/2/3 | `cast_mm` / `move_mm_dodge` / `mm_hit` | `KefkaP4Encounter.CastMysteriousMagic` etc. | 8.0 / 22.9 / 38.1 | Ported | `TimelineTests`, `GeometryTests` |
+| Grand Cross 1/2 debuffs | `cast_gc`, `neo_debuffs` | `AssignGrandCross` | 12.6 / 27.6 | Ported | `AssignmentTests` |
+| Grand Cross 3 wounds | `neo_debuffs_3` | `AssignGrandCrossThree` | 44.0 | Ported | `FloodOfNaughtsTests` |
+| Chaos (Entropy/Dynamic Fluid) | `cast_chaos`, `chaos_debuffs` | `AssignChaos` | 18.4 / 34.4 | Ported | — |
+| **Flood of Naughts** | `flood_cast`, `move_flood_dodge`, `flood_hit`, GC3 setup block | `AddFloodHalf`, `MoveFlood`, `ResolveFlood`, `FloodBriefing` | 55.0 | **Verified** | `FloodOfNaughtsTests` (8-row truth table + all 8 rotations) |
+| Short/Long GC debuffs | `move_short_debuff`, `short_debuff_hit`, `long_debuff_hit` | `MoveShortDebuffs`, `ResolveDebuffs` | 63.8 / 88.7 | Ported | `MechanicSemanticsTests` |
+| Acceleration Bomb | `short_debuff_hit` velocity check | `PlayerState.IsMoving` | 63.8 / 88.7 | Verified | `MechanicSemanticsTests` (strict 0.1 boundary) |
+| Thrumming Thunder III | `cast_tt`, `move_tt_dodge`, `tt_hit` | `*ThrummingThunder` | 71.4 | Ported | — |
+| Cursed Shriek 1/2 | `shriek_1_hit`, `shriek_2_hit`, `check_if_facing` | `KefkaP4Gaze` | 72.8 / 96.7 | Verified | `GhostAndGazeTests` |
+| Entropy twisters | `snapshot_inferno`, `inferno_dodge`, `inferno_hit` | `*Inferno` | 83.5 | Ported | — |
+| Blizzard Blowout III | `cast_bb`, `bb_hit` | `*BlizzardBlowout` | 89.4 | Ported | — |
+| Mana Release / Dynamic Fluid | `cast_mr`, `show_mr_tele`, `move_mr_dodge`, `mr_hit` | `*ManaRelease` | 107.5 | Ported | — |
+| Ultima Upsurge | `cast_ultima`, `kefka_ultima_finish` | `CastUltima`, `UltimaFinish` | 76.9 / 115.6 | Presentation only | — |
+| Allagan Field / Beyond Death | `neo_debuffs_3` | debuff assignment only | 44.0 | Presentation only | — |
+| Neo relocate / fade | `neo_fade_out`, `neo_move_fade_in` | `NeoFade`, `NeoRelocate` | 46.0 / 47.5 | Presentation only | — |
+
+### Flood of Naughts, in full
+
+This is the mechanic most easily mis-read, so the derivation is recorded here.
+
+Assignment, `p4_seq.gd` Grand Cross 3 setup:
+
+```gdscript
+keys.shuffle()
+field_keys = keys.slice(0, 4)   # Allagan Field
+death_keys = keys.slice(4, 8)   # Beyond Death
+for i in keys.size():
+    if randi() % 2 == 0:
+        black_wound_keys.append(keys[i])
+        if i >= 4 != flood_fake: black_safe_keys.append(keys[i])
+        else:                    white_safe_keys.append(keys[i])
+    else:
+        white_wound_keys.append(keys[i])
+        if i >= 4 == flood_fake: black_safe_keys.append(keys[i])
+        else:                    white_safe_keys.append(keys[i])
+```
+
+Resolution, `flood_hit`:
+
+```gdscript
+var pos = v2(party[key].global_position).rotated(deg_to_rad(-neo_rotation_deg))
+if black_west == black_safe_keys.has(key):
+    if pos.x > 0.0: fail("hit by wrong Antilight")
+elif pos.x < 0.0:   fail("hit by wrong Antilight")
+```
+
+Two things decide the reading:
+
+1. GDScript comparison operators are left-associative and **do not chain** the
+   way Python's do, so `i >= 4 != flood_fake` is `(i >= 4) != flood_fake`. The
+   chaining reading would make `flood_fake` inert for white wounds, which
+   contradicts the author's own comment that the branch "takes flood fake into
+   account so don't check for this later".
+2. `i >= 4` is exactly "this slot is in `death_keys`", i.e. carries Beyond
+   Death rather than Allagan Field.
+
+The resulting truth table — note that **the safe colour is not simply your own
+wound colour**:
+
+| Flood | Wound | Second icon | Stand in | Relative to wound |
+| --- | --- | --- | --- | --- |
+| Real | Black | Allagan Field | White | opposite |
+| Real | Black | Beyond Death | Black | same |
+| Real | White | Allagan Field | Black | opposite |
+| Real | White | Beyond Death | White | same |
+| Fake | — | — | inverts each row above | — |
+
+Restated: **Allagan Field takes the opposite colour, Beyond Death takes the
+same colour, and a fake Flood inverts both.**
+
+Membership of `black_safe_keys` is therefore equivalent to "stands in the black
+Antilight" regardless of which compass side black is on that pull; the compass
+side is only introduced by `black_west`. `FloodBriefing.StandInBlack` asserts
+that equivalence and `FloodOfNaughtsTests` pins it.
+
+The grading, side selection and bot movement were all found to already match
+Waju exactly. The defect was that the trainer never stated the conclusion: the
+old cue reported only "Flood: Real / Black West", leaving the player to combine
+three inputs under a 5.3s cast. `FloodBriefing` now resolves it once and drives
+the cue, the failure text and the debug panel from the same value.
+
+### Known API traps
+
+- `KefkaP4Encounter.SimulatedPartyPositions` keeps the **pull-start** position
+  for the local player's own slot. `SetPositions` routes that slot to
+  `RequiredPosition` instead. The renderer skips the player's key, so this is
+  harmless on screen, but any consumer iterating the dictionary must exclude
+  `PlayerRole` or it will read a stale point.
+- `Waju-Sims/DalamudPlugin/` inside the reference clone is a **stale copy of
+  this plugin** from 2026-07-30 (pre-`v0.1.1.0`). It is not the build source.
+  The authoritative tree is the repository root. Do not edit it.

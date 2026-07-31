@@ -1,0 +1,283 @@
+KefkaP4Trainer — WORK PROGRESS JOURNAL
+
+====================================================================
+2026-07-31  Session: recovery, Waju parity audit, Flood, tell placement
+====================================================================
+
+--------------------------------------------------------------------
+1. REPOSITORY STATE FOUND
+--------------------------------------------------------------------
+
+Commands run:
+
+  git rev-parse --show-toplevel
+  git status --short --branch
+  git remote -v
+  git branch -vv
+  git fetch --all --prune
+  git log --graph --decorate --oneline --all -n 40
+  git tag --list
+  git ls-files --others --exclude-standard
+  git rev-list --left-right --count origin/main...main
+
+Findings:
+
+  Root:        Documents/KefkaP4  (.git present, created 2026-07-31 08:15)
+  Remote:      origin https://github.com/Neycourt5/KefkaP4.git
+  Branch:      main @ fd0cc53 "Release v0.1.8.0", tracking origin/main
+  Ahead/behind: behind=0 ahead=0
+  Worktree:    clean; `git ls-files --others --exclude-standard` returned empty
+  Tags:        v0.1.0.0 .. v0.1.8.0 (9 tags, linear history, 31 commits)
+
+INTEGRATION DECISION: none required. No divergence, no local modifications,
+no untracked work. Nothing was stashed, backed up, reset or force-pulled. No
+destructive command was run at any point.
+
+The continuation prompt anticipated a possibly-stale PC. It was not stale.
+
+--------------------------------------------------------------------
+2. FILES THE PROMPT EXPECTED THAT DO NOT EXIST
+--------------------------------------------------------------------
+
+  WORK_PLAN.txt            did not exist (created this session)
+  WORK_PROGRESS.txt        did not exist (created this session)
+  DalamudPlugin/           does not exist in this repo — layout is FLAT
+
+  `git log --all -- WORK_PLAN.txt WORK_PROGRESS.txt` returned empty, so these
+  were never committed at any point in the project's history.
+
+TRAP FOUND: Waju-Sims/DalamudPlugin/ DOES exist and contains a full copy of
+this plugin, including PORTING_NOTES.md and README.md. It is STALE — the file
+sizes and mtimes match this project's 2026-07-30 state, before v0.1.1.0. A
+session following the prompt's literal path "DalamudPlugin/PORTING_NOTES.md"
+would read and potentially edit the wrong tree. Recorded in PORTING_NOTES.md
+under "Known API traps".
+
+--------------------------------------------------------------------
+3. WAJU REFERENCE DIRECTORY
+--------------------------------------------------------------------
+
+Exact directory: Waju-Sims/   (capital W, capital S, hyphen)
+
+It is a separate git clone (upstream WCGH/Waju-Sims @ c1145bc) nested inside
+this repo's working tree.
+
+  git check-ignore -v Waju-Sims/   ->  .gitignore:52:Waju-Sims/
+  git ls-files Waju-Sims | wc -l   ->  0
+  git log --oneline --all -- Waju-Sims  ->  (empty)
+
+CONCLUSION: already ignored, never tracked. `git rm -r --cached` was NOT run
+because there was nothing in the index to remove. The directory remains on
+disk as the authoritative reference and was not deleted or modified.
+
+--------------------------------------------------------------------
+4. BASELINE BUILD/TEST (before any change)
+--------------------------------------------------------------------
+
+  dotnet test  KefkaP4Trainer.Core.Tests/... -c Release
+    -> Passed! Failed: 0, Passed: 91, Skipped: 0, Total: 91
+  dotnet build KefkaP4Trainer/KefkaP4Trainer.csproj -c Release -p:Platform=x64
+    -> Build succeeded. 0 Warning(s), 0 Error(s)
+
+ENVIRONMENT NOTE: `dotnet` on PATH resolves to a runtime-only install at
+C:\Program Files\dotnet with NO SDK. The SDK (10.0.302) is at
+%LOCALAPPDATA%\Microsoft\dotnet. Every build below used:
+  export PATH="$LOCALAPPDATA/Microsoft/dotnet:$PATH"
+  export DOTNET_ROOT="$LOCALAPPDATA/Microsoft/dotnet"
+
+Dalamud dev libraries are not installed at %APPDATA%\XIVLauncher\addon\Hooks\dev
+on this machine. Builds used DALAMUD_HOME pointed at an extracted copy of
+https://goatcorp.github.io/dalamud-distrib/latest.zip (Dalamud 15.0.3.0,
+matching Dalamud.NET.Sdk/15.0.0 -> DalamudApiLevel 15).
+
+--------------------------------------------------------------------
+5. WAJU SOURCES TRACED
+--------------------------------------------------------------------
+
+  Waju-Sims/waju-sim/scenes/dmu/p4/p4_main.tscn   (p4_anim method tracks)
+  Waju-Sims/waju-sim/scenes/dmu/p4/p4_seq.gd      (assignments + all callbacks)
+      lines 178-179   flood_fake / black_west rolls
+      lines 216-235   Grand Cross 3 setup, black/white wound + safe sets
+      lines 420-426   flood_cast
+      lines 428-451   flood_hit  (the grader)
+      lines 753-763   move_flood_dodge (bot destinations)
+
+--------------------------------------------------------------------
+6. TIMELINE PARITY RESULT
+--------------------------------------------------------------------
+
+Parsed all method tracks out of p4_anim and diffed against
+KefkaP4Timeline.Events programmatically (not by eye).
+
+  Waju events: 50   C# events: 50   time sequences identical: True
+
+Every one of the 50 events matches on timestamp, ordering AND integer
+argument. No discrepancy found. Pinned by the new
+WajuTimelineParityTests.PortedTimelineMatchesTheWajuAnimationTrack, whose
+expectation table is transcribed from the .tscn.
+
+--------------------------------------------------------------------
+7. FLOOD OF NAUGHTS — ROOT CAUSE
+--------------------------------------------------------------------
+
+Reported symptom: plugin said REAL; player held the purple debuff and a
+blue-person icon; player stood in purple ("same colour"); result looked wrong.
+
+Mapping the reported colours to debuffs:
+  purple            = Black Wound      (ShapeRenderer black = 0.48,0.35,0.72)
+  blue person icon  = Allagan Field    (StatusHud AllaganField = 0.20,0.43,0.85)
+  (Beyond Death renders red, White Wound near-white — neither was described.)
+
+So the case was: Black Wound + Allagan Field + REAL Flood.
+
+Per p4_seq.gd, black wound is black-safe when (i >= 4) != flood_fake. Allagan
+Field means i < 4, and REAL means flood_fake == false, so:
+  (false) != (false)  ->  false  ->  WHITE-safe.
+
+The required answer was the WHITE Antilight. The player stood in purple/black.
+That is a genuine fail, and the plugin graded it correctly.
+
+ROOT CAUSE: not a code defect. The player's rule-of-thumb ("be hit by the same
+colour") is only correct for Beyond Death holders on a real Flood. The actual
+rule combines three inputs:
+
+  Allagan Field -> OPPOSITE colour
+  Beyond Death  -> SAME colour
+  Fake Flood    -> inverts both
+
+The trainer never surfaced that conclusion. The pre-existing cue said only
+"Flood: Real / Black West", which names the compass side of black but not which
+side the PLAYER should take. All the inputs were on screen as icons; the
+derivation was left to the player under a 5.3s cast.
+
+Verified as correct against Waju, and left unchanged:
+  - assignment sets            (KefkaP4Assignments.Generate)
+  - expectedWest selection     (ResolveFlood)
+  - strict > 0 / < 0 boundary  (matches Waju exactly; centre line fails neither)
+  - bot destinations           (MoveFlood)
+  - west/east rectangle colour (AddFloodHalf; west is Black iff black_west)
+
+One subtlety that had to be settled to read the source at all: GDScript
+comparison operators are left-associative and do NOT chain like Python's, so
+`i >= 4 != flood_fake` is `(i >= 4) != flood_fake`. The chaining reading makes
+flood_fake inert for white wounds, contradicting the author's own comment. The
+existing C# already used the left-associative reading.
+
+FIX MADE: added FloodBriefing (KefkaP4Flood.cs), built from the same assignment
+sets the grader reads, exposing the resolved side, the resolved Antilight
+colour, whether that matches the wound colour, and a plain-language
+explanation. Wired into:
+  - CurrentCue          -> "Flood Real: go WEST into White Antilight"
+  - ResolveFlood reason -> "wrong Antilight side: needed White (WEST)"
+  - DebugWindow         -> new "Flood of Naughts" section
+
+TESTS ADDED (KefkaP4Trainer.Core.Tests/FloodOfNaughtsTests.cs):
+  - BlackSafeMembershipMeansStandingInTheBlackAntilight  (400 seeds x 8 roles)
+  - SafeSetsPartitionTheParty
+  - AssignmentMatchesWajuTruthTable                      (8-row [Theory])
+  - BlackWoundWithAllaganFieldOnRealFloodRequiresWhiteAntilight (reported case)
+  - FollowingTheBriefingAlwaysPassesAndInvertingItAlwaysFails
+        (250 seeds x 8 roles; asserts all 8 Neo rotations and both fake states
+         are actually exercised)
+  - ArenaCentreIsNotAFailureForEitherSide
+  - OutsideTheArenaFailsOnTheBoundaryReason
+  - SimulatedPartyMovesToTheSideItsBriefingNames
+
+--------------------------------------------------------------------
+8. OTHER DISCREPANCIES FOUND
+--------------------------------------------------------------------
+
+(a) TEST-ONLY, now handled: KefkaP4Encounter.SimulatedPartyPositions retains
+    the PULL-START position for the local player's own slot, because
+    SetPositions routes that slot to RequiredPosition instead of the
+    dictionary. Caught by SimulatedPartyMovesToTheSideItsBriefingNames failing
+    on first run. Harmless in the product (ArenaOverlayRenderer already skips
+    the player's key) so the behaviour was left alone and documented in
+    PORTING_NOTES.md "Known API traps" instead of changed.
+
+(b) PRODUCT: the element tell badges projected ONE ground anchor at the arena
+    centre and then stacked in screen space with a fixed pixel gap. The gap
+    therefore shrank as the camera pitched down and the pair read as one clump.
+    Fixed — see section 9.
+
+No other parity discrepancy was found in the mechanics audited. Chaos,
+Thrumming Thunder, Entropy, Blizzard Blowout and Mana Release were traced and
+match, but do not yet have dedicated fixtures — recorded as "Ported" rather
+than "Verified" in the parity matrix.
+
+--------------------------------------------------------------------
+9. ICE / LIGHTNING PLACEMENT
+--------------------------------------------------------------------
+
+Both badges now project from their own world anchor above the arena centre:
+
+  MagicTellLightningHeight  default 4.2 yalms  (shoulders/head)
+  MagicTellIceHeight        default 1.2 yalms  (knees/lower legs)
+  MagicTellHorizontalSpread default 0, simulator units, applied in opposite
+                            directions on the arena X axis
+
+All three are sliders under Settings, and each badge is skipped independently
+if its own anchor fails to project. The caption rides above whichever badge is
+higher on screen rather than assuming lightning always is.
+
+CAVEAT: the two default heights were chosen from arena scale (47 simulator
+units = ~20.4 yalms radius), NOT from measuring Kefka's model. They are the
+most likely thing to need tuning during in-game verification.
+
+--------------------------------------------------------------------
+10. BUILDS AND TESTS
+--------------------------------------------------------------------
+
+  Baseline                       91/91  passed, build 0 warnings 0 errors
+  After Flood tests (1st run)   105/106 passed — 1 failure, test bug, see 8(a)
+  After test fix                106/106 passed
+  After tell placement rework   106/106 passed, build 0 warnings 0 errors
+  After timeline parity tests   109/109 passed
+
+Final: 109/109 core tests pass. Plugin builds with 0 warnings under
+TreatWarningsAsErrors against Dalamud 15.0.3.
+
+--------------------------------------------------------------------
+11. COMMITS MADE (local only — NOT pushed)
+--------------------------------------------------------------------
+
+  2a2eedf  feat: state the resolved Flood of Naughts side
+  81ce6c2  test: add Flood of Naughts parity fixtures from p4_seq.gd
+  44661ce  feat: place the element tells in the world instead of stacking them
+  (+ this docs commit)
+
+origin/main is still at fd0cc53. Nothing was pushed; that is left to the repo
+owner.
+
+--------------------------------------------------------------------
+12. NOT DONE THIS SESSION
+--------------------------------------------------------------------
+
+Untouched, no code written, no API investigation performed:
+
+  - Debuff-bar HUD anchoring (IAddonLifecycle / addon pointer work)
+  - Virtual party health model
+  - Party-list overlay
+  - Damage-event dataset and FF Logs U: calibration
+  - Healer action observation (incl. the open question of whether instant
+    oGCD heals can be observed safely under API 15 at all)
+  - One-healer complementary co-healer
+  - Countdown / targetable audio beyond what v0.1.7.0 already shipped
+  - Multiplayer protocol, loopback test mode, WebSocket relay
+  - IN-GAME VERIFICATION OF ANYTHING IN THIS SESSION
+
+The last item matters most: every claim above rests on unit tests and a clean
+compile. Nothing here has been seen running in FFXIV.
+
+--------------------------------------------------------------------
+13. EXACT NEXT STEPS
+--------------------------------------------------------------------
+
+  1. Load the dev DLL, verify the Flood debug panel and the tell placement
+     (see WORK_PLAN.txt "EXACT NEXT TASK" for the specific checks).
+  2. Tune MagicTell*Height defaults against the real model if needed.
+  3. Investigate healer action observation under API 15 BEFORE scoping the
+     healer simulation; the answer determines whether that feature set is
+     achievable in the shape the continuation prompt assumes.
+  4. Add fixtures for the five "Ported" mechanics to promote them to
+     "Verified" in the parity matrix.
