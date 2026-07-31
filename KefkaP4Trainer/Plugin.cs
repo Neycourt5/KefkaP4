@@ -5,6 +5,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using KefkaP4Trainer.Core;
+using KefkaP4Trainer.Healing;
 using KefkaP4Trainer.Rendering;
 using KefkaP4Trainer.Windows;
 
@@ -21,6 +22,8 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
     private readonly MainWindow mainWindow;
     private readonly ConfigWindow configWindow;
     private readonly DebugWindow debugWindow;
+    private readonly HealerWindow healerWindow;
+    private readonly HealerActionObserver healerObserver = new();
     private readonly ArenaOverlayRenderer arenaOverlayRenderer;
     private readonly StatusHudRenderer statusHudRenderer;
     private readonly ResultOverlayRenderer resultOverlayRenderer;
@@ -54,9 +57,14 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
         mainWindow = new MainWindow(this);
         configWindow = new ConfigWindow(this);
         debugWindow = new DebugWindow(this);
+        HealerPractice = new HealerPracticeService(healerObserver);
+        HealerPractice.Party.SetMaximumHp(Configuration.HealerSimulatedMaximumHp);
+        healerObserver.VerifyAgainstGameData();
+        healerWindow = new HealerWindow(this);
         windowSystem.AddWindow(mainWindow);
         windowSystem.AddWindow(configWindow);
         windowSystem.AddWindow(debugWindow);
+        windowSystem.AddWindow(healerWindow);
         arenaOverlayRenderer = new ArenaOverlayRenderer(Services.GameGui, Services.Log);
         statusHudRenderer = new StatusHudRenderer(Services.Log, Services.TextureProvider);
         resultOverlayRenderer = new ResultOverlayRenderer(Services.Log);
@@ -110,6 +118,14 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
         get => debugWindow.IsOpen;
         set => debugWindow.IsOpen = value;
     }
+
+    public bool HealerWindowVisible
+    {
+        get => healerWindow.IsOpen;
+        set => healerWindow.IsOpen = value;
+    }
+
+    public HealerPracticeService HealerPractice { get; }
 
     public void Dispose()
     {
@@ -351,6 +367,7 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
             soundCues.Update(Engine, Configuration);
             var pullBeforeUpdate = Engine.PullNumber;
             Engine.Update(elapsedSeconds, LastPlayer);
+            HealerPractice.Update(Engine, Configuration);
             if (Engine.PullNumber != pullBeforeUpdate)
             {
                 Configuration.Seed = Engine.Seed;
@@ -429,6 +446,9 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
                     break;
                 case "debug" when parts.Length == 1:
                     DebugWindowVisible = !DebugWindowVisible;
+                    break;
+                case "healer" when parts.Length == 1:
+                    HealerWindowVisible = !HealerWindowVisible;
                     break;
                 case "setarena" when parts.Length == 2:
                     SetArenaCommand(parts[1]);

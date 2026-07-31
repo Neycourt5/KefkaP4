@@ -1,5 +1,6 @@
 using System.Numerics;
 using KefkaP4Trainer.Core;
+using KefkaP4Trainer.Healing;
 
 namespace KefkaP4Trainer.Windows;
 
@@ -27,6 +28,11 @@ internal interface ITrainerWindowHost
     bool ConfigWindowVisible { get; set; }
 
     bool DebugWindowVisible { get; set; }
+
+    bool HealerWindowVisible { get; set; }
+
+    /// <summary>The simulated party and healer-observation pipeline.</summary>
+    HealerPracticeService HealerPractice { get; }
 
     /// <summary>
     /// Developer-spawned ghosts used to verify projection and facing in game.

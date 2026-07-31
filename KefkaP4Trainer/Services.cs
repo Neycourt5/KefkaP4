@@ -37,5 +37,8 @@ internal sealed class Services
 
     [PluginService]
     internal static IChatGui Chat { get; private set; } = null!;
+
+    [PluginService]
+    internal static IDataManager DataManager { get; private set; } = null!;
 }
 

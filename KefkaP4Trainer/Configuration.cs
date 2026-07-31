@@ -188,5 +188,19 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool MainWindowVisibleAfterStart { get; set; }
 
+    // Healer practice. Off by default: a DPS practising movement should never
+    // have a simulated party quietly taking damage behind the overlay.
+    public bool HealerPracticeEnabled { get; set; }
+
+    /// <summary>Whether the scripted damage table fires during a pull.</summary>
+    public bool HealerDamageEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Maximum HP every simulated slot is given. Damage is normalised against
+    /// the reference pool the calibration figures were taken at, so changing
+    /// this keeps each mechanic's severity constant.
+    /// </summary>
+    public int HealerSimulatedMaximumHp { get; set; } = 148_000;
+
     public void Save() => Services.PluginInterface.SavePluginConfig(this);
 }
