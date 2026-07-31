@@ -18,7 +18,8 @@ namespace KefkaP4Trainer.Rendering;
 internal sealed class CastBarRenderer
 {
     private const float BaseWidth = 230;
-    private const float BaseBarHeight = 12;
+    // Tall enough to carry the real/fake tell inside the bar.
+    private const float BaseBarHeight = 18;
     private const float BasePadding = 8;
     private const float BaseLineHeight = 18;
     private const float BaseRowGap = 8;
@@ -124,6 +125,26 @@ internal sealed class CastBarRenderer
 
             drawList.AddRect(
                 barMin, barMax, ImGui.GetColorU32(new Vector4(0.62f, 0.72f, 0.90f, 0.75f)), 2 * scale);
+
+            // Every boss in the phase advertises real or fake, so the tell rides
+            // on the bar of the cast it belongs to rather than needing its own
+            // indicator per boss.
+            if (cast.Tell.Length > 0)
+            {
+                var tellSize = ImGui.CalcTextSize(cast.Tell);
+                var tellPosition = new Vector2(
+                    barMin.X + ((width - tellSize.X) * 0.5f),
+                    barMin.Y + ((barHeight - tellSize.Y) * 0.5f));
+                var tellColor = cast.AnyFake
+                    ? new Vector4(1.00f, 0.72f, 0.30f, 1)
+                    : new Vector4(0.72f, 0.90f, 1.00f, 1);
+                drawList.AddText(
+                    tellPosition + Vector2.One,
+                    ImGui.GetColorU32(new Vector4(0, 0, 0, 0.95f)),
+                    cast.Tell);
+                drawList.AddText(tellPosition, ImGui.GetColorU32(tellColor), cast.Tell);
+            }
+
             cursor.Y += rowHeight + rowGap;
         }
     }

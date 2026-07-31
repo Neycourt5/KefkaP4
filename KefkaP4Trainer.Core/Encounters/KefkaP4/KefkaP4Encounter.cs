@@ -51,7 +51,7 @@ public sealed class KefkaP4Encounter
         Assignments = KefkaP4Assignments.Generate(seed);
         // Chaos casts Inferno or Tsunami first depending on the seed, so the bar
         // names are rebuilt with the assignments rather than being static.
-        CastBars = KefkaP4CastBars.Build(Assignments.InfernoFirst);
+        CastBars = KefkaP4CastBars.Build(Assignments);
         PlayerRole = playerRole;
         shapes.Clear();
         debuffs.Clear();
