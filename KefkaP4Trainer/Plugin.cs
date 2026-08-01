@@ -597,7 +597,7 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
     /// </remarks>
     private void MigrateConfiguration()
     {
-        const int currentVersion = 3;
+        const int currentVersion = 4;
         if (Configuration.Version >= currentVersion)
         {
             return;
@@ -620,6 +620,16 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
         {
             // Never saw v2, so only ice needs moving.
             Configuration.MagicTellIceHeight = 0.4f;
+        }
+
+        // v4: the Antilight colour assignment was inferred from source and never
+        // confirmed, because the textures that would settle it are not in the
+        // reference clone. Seen in game, it is reversed. Only the drawn colour
+        // moves: which side is safe, which Antilight is required and the grading
+        // all stay as the p4_seq.gd fixtures pin them.
+        if (Configuration.Version < 4)
+        {
+            Configuration.SwapAntilightColors = true;
         }
 
         Configuration.Version = currentVersion;

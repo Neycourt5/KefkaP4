@@ -97,10 +97,13 @@ public sealed class Configuration : IPluginConfiguration
     // (line versus cone) as the only thing telling the two elements apart.
     public bool ElementColoredTelegraphs { get; set; } = true;
 
-    // Flips which Antilight is drawn purple and which blue. The assignment is
-    // inferred (Black -> purple, White -> blue) because Waju's own textures are
-    // absent from the reference clone; one look in game settles it.
-    public bool SwapAntilightColors { get; set; }
+    // Flips which Antilight is drawn purple and which blue. FloodColors infers
+    // Black -> purple, White -> blue, because Waju's textures are absent from
+    // the reference clone and the pixels could not be checked from source.
+    // Observed in game to be the other way round, so this defaults on; the
+    // inference and the correction stay separable rather than being quietly
+    // folded together.
+    public bool SwapAntilightColors { get; set; } = true;
 
     /// <summary>Draw a stand-in for Neo Exdeath and its two Antilight banners.</summary>
     public bool ShowFloodStage { get; set; } = true;

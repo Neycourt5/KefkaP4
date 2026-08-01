@@ -62,9 +62,10 @@ public enum ArenaSide
 /// obvious reading — Black is the darker purple, White is the lighter blue —
 /// and matches the colours this plugin already used for the two halves.
 /// <para>
-/// If a look in game shows the opposite, flip
-/// <c>Configuration.SwapAntilightColors</c>; nothing else needs to change,
-/// because every consumer reads the colour from here.
+/// <b>That reading was wrong.</b> Checked in game, the two are reversed, so
+/// <c>Configuration.SwapAntilightColors</c> now defaults on and every consumer
+/// picks the correction up from here. The inference is left stated rather than
+/// quietly rewritten, so the swap flag keeps meaning what its name says.
 /// </para>
 /// </remarks>
 public static class FloodColors
