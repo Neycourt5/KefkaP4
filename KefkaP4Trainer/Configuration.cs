@@ -79,15 +79,15 @@ public sealed class Configuration : IPluginConfiguration
     // from separate world points rather than stacked in screen space, so the gap
     // holds as the camera pitches and orbits.
     //
-    // The source scene rides its rings at y=7.23 (thunder) and y=3.58 (ice) on a
-    // model at the arena origin, and the two projects share a scale: the sim's
-    // NEO_EXDEATH_NORTH is (0, -47) against ArenaRadius 47. Lightning takes that
-    // measured height directly, which lands it above his head. Ice goes below the
-    // measured ring so it reads down at his shins rather than his waist, opening
-    // the gap to just over five yalms.
-    public float MagicTellIceHeight { get; set; } = 2f;
+    // Tuned against the game, not against the source scene. The scene rides its
+    // rings at y=7.23 and y=3.58, but those are set on its own Kefka model, and
+    // the arena scale matching says nothing about model scale: transplanted
+    // directly, lightning floats well above anything you anchor on. Ice sits
+    // deliberately low so it reads at the shins, with the pair about four yalms
+    // apart. Both are sliders; the right value depends on what you anchored to.
+    public float MagicTellIceHeight { get; set; } = 0.4f;
 
-    public float MagicTellLightningHeight { get; set; } = 7.2f;
+    public float MagicTellLightningHeight { get; set; } = 4.2f;
 
     // Simulator units applied in opposite directions on the arena X axis, for
     // camera angles where the badges would otherwise line up behind each other.

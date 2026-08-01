@@ -597,20 +597,29 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
     /// </remarks>
     private void MigrateConfiguration()
     {
-        const int currentVersion = 2;
+        const int currentVersion = 3;
         if (Configuration.Version >= currentVersion)
         {
             return;
         }
 
-        // v2: the element badges sat 3 yalms apart, low on the model and close
-        // enough to read as one cluster. Measured against the source scene they
-        // belong far wider: lightning above his head, ice down at his shins.
-        if (IsDefault(Configuration.MagicTellLightningHeight, 4.2f)
+        // The badges want a wider gap than the original 4.2/1.2, which read as
+        // one cluster. v2 took the heights from the source scene's own rings,
+        // but that scene sets them on its own Kefka model: the arena scales
+        // match, model scale does not, and lightning ended up in the sky. v3
+        // widens downwards instead, dropping ice to the shins and leaving
+        // lightning where it already sat.
+        if (IsDefault(Configuration.MagicTellLightningHeight, 7.2f)
+            && IsDefault(Configuration.MagicTellIceHeight, 2f))
+        {
+            Configuration.MagicTellLightningHeight = 4.2f;
+            Configuration.MagicTellIceHeight = 0.4f;
+        }
+        else if (IsDefault(Configuration.MagicTellLightningHeight, 4.2f)
             && IsDefault(Configuration.MagicTellIceHeight, 1.2f))
         {
-            Configuration.MagicTellLightningHeight = 7.2f;
-            Configuration.MagicTellIceHeight = 2f;
+            // Never saw v2, so only ice needs moving.
+            Configuration.MagicTellIceHeight = 0.4f;
         }
 
         Configuration.Version = currentVersion;
