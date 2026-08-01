@@ -57,6 +57,10 @@ public sealed class Configuration : IPluginConfiguration
 
     public int CurveSegments { get; set; } = 48;
 
+    // Normalises the second Cursed Shriek so both gazes put DPS south and
+    // supports north. The source only does this for the first one.
+    public bool GazeSidesFollowRoleConvention { get; set; } = true;
+
     public bool ShowSafeZones { get; set; }
 
     // Destination guidance. Unlike the gaze aids below this is on by default:

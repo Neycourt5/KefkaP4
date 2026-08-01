@@ -244,6 +244,21 @@ internal sealed class ConfigWindow : Window
             changed = true;
         }
 
+        var gazeConvention = config.GazeSidesFollowRoleConvention;
+        if (ImGui.Checkbox("Gazes: DPS south, supports north", ref gazeConvention))
+        {
+            config.GazeSidesFollowRoleConvention = gazeConvention;
+            changed = true;
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "The source puts the support carrier north on the first Cursed\n"
+                + "Shriek but south on the second. This normalises the second so\n"
+                + "both read the same way. Turn off to match the source exactly.");
+        }
+
         var safeZones = config.ShowSafeZones;
         if (ImGui.Checkbox("Show suggested positions", ref safeZones))
         {

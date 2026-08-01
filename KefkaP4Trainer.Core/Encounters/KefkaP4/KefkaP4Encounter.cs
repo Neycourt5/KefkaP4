@@ -27,6 +27,23 @@ public sealed class KefkaP4Encounter
     /// <summary>Casts in this pull, for the cast bars.</summary>
     public IReadOnlyList<CastBar> CastBars { get; private set; } = [];
 
+    /// <summary>
+    /// Puts both Cursed Shriek carriers on the side their role convention calls
+    /// for, rather than reproducing the source's second placement verbatim.
+    /// </summary>
+    /// <remarks>
+    /// The source is not self-consistent here. Shriek 1 sends the support carrier
+    /// north and the DPS carrier south (<c>TT_GAZE</c> nw/sw), which is the usual
+    /// "DPS south, supports north" convention; <c>move_shriek_2_dodge</c> then
+    /// places support at (0, 3) and DPS at (0, -3), which is the reverse. Groups
+    /// running the convention on both want the second normalised.
+    /// <para>
+    /// Defaults off so the encounter keeps matching <c>p4_seq.gd</c> exactly and
+    /// the parity fixture asserts the source behaviour. The plugin turns it on.
+    /// </para>
+    /// </remarks>
+    public bool GazeSidesFollowRoleConvention { get; set; }
+
     public PartyRole PlayerRole { get; private set; }
 
     public Vector2? RequiredPosition { get; private set; }
@@ -853,8 +870,17 @@ public sealed class KefkaP4Encounter
     private SimulationResult? MoveShriekTwo(double time)
     {
         SetPositions(KefkaP4Positions.ShriekTwo, time, 96.7);
-        SetBotPosition(Assignments.GrandCrossTwo.ShriekSupport, new Vector2(0, 3));
-        SetBotPosition(Assignments.GrandCrossTwo.ShriekDps, new Vector2(0, -3));
+
+        // North is negative Y. The source sends support south and DPS north here,
+        // the opposite of what it does for Shriek 1; the convention swaps them
+        // back so both gazes read the same way round.
+        var supportNorth = GazeSidesFollowRoleConvention;
+        SetBotPosition(
+            Assignments.GrandCrossTwo.ShriekSupport,
+            new Vector2(0, supportNorth ? -3 : 3));
+        SetBotPosition(
+            Assignments.GrandCrossTwo.ShriekDps,
+            new Vector2(0, supportNorth ? 3 : -3));
         AddShriekMarkers(Assignments.GrandCrossTwo, time, 96.7);
         return null;
     }

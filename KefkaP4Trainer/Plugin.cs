@@ -183,6 +183,8 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
 
         Engine.FailureBehavior = Configuration.FailureBehavior;
         Engine.Clock.PlaybackSpeed = Configuration.PlaybackSpeed;
+        Engine.Encounter.GazeSidesFollowRoleConvention =
+            Configuration.GazeSidesFollowRoleConvention;
         gameStateReader.ResetVelocitySample();
         pausedForMissingPlayer = false;
         updateFaulted = false;
@@ -353,6 +355,8 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
             Engine.Clock.PlaybackSpeed = Configuration.PlaybackSpeed;
             Engine.FailureBehavior = Configuration.FailureBehavior;
             Engine.Encounter.SwapAntilightColors = Configuration.SwapAntilightColors;
+            Engine.Encounter.GazeSidesFollowRoleConvention =
+                Configuration.GazeSidesFollowRoleConvention;
             if (!LastPlayer.IsValid)
             {
                 if (Engine.Clock.State is SimulationState.Running or SimulationState.Countdown)
