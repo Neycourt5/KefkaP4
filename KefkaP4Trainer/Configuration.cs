@@ -157,6 +157,10 @@ public sealed class Configuration : IPluginConfiguration
 
     public float StatusIconSpacing { get; set; } = 4;
 
+    // Drops every text line and the frame, leaving just the status row, so the
+    // HUD can be parked against the real debuff bar and read the same way.
+    public bool StatusHudIconsOnly { get; set; }
+
     public bool StatusTimerText { get; set; } = true;
 
     public bool SortStatusesLikeSource { get; set; } = true;

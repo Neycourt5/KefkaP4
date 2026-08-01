@@ -416,6 +416,20 @@ internal sealed class ConfigWindow : Window
             changed = true;
         }
 
+        var iconsOnly = config.StatusHudIconsOnly;
+        if (ImGui.Checkbox("Icons only (no text, no frame)", ref iconsOnly))
+        {
+            config.StatusHudIconsOnly = iconsOnly;
+            changed = true;
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "Shows just the status row, so it can sit beside your real\n"
+                + "debuffs. Unlock the HUD to drag it into place.");
+        }
+
         var gameIcons = config.UseGameStatusIcons;
         if (ImGui.Checkbox("Use real game status icons", ref gameIcons))
         {

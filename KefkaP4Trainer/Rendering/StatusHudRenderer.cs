@@ -121,21 +121,38 @@ internal sealed class StatusHudRenderer
         var iconsWidth = debuffs.Count == 0
             ? 0
             : (debuffs.Count * iconSize) + ((debuffs.Count - 1) * spacing);
-        var contentWidth = MathF.Max(300 * scale, iconsWidth);
-        contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(mechanicLine).X);
-        contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(statusLine).X);
-        contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(pullLine).X);
-        contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(assignmentLine).X);
-        contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(resultLine).X);
-        contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(namesLine).X);
 
-        var debugLines = configuration.ShowStatusDebugValues ? debuffs.Count : 0;
-        var height =
-            (padding * 2)
-            + (lineHeight * 5)
-            + (debuffs.Count > 0 ? iconSize + spacing : 0)
-            + lineHeight
-            + (debugLines * lineHeight);
+        // Icons-only strips the panel down to the status row so it can sit
+        // against the real debuff bar. It also drops the frame: a border is what
+        // would give it away as a separate overlay.
+        var iconsOnly = configuration.StatusHudIconsOnly;
+        float contentWidth;
+        float height;
+        if (iconsOnly)
+        {
+            contentWidth = MathF.Max(iconSize, iconsWidth);
+            height = iconSize;
+        }
+        else
+        {
+            contentWidth = MathF.Max(300 * scale, iconsWidth);
+            contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(mechanicLine).X);
+            contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(statusLine).X);
+            contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(pullLine).X);
+            contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(assignmentLine).X);
+            contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(resultLine).X);
+            contentWidth = MathF.Max(contentWidth, ImGui.CalcTextSize(namesLine).X);
+
+            var debugLines = configuration.ShowStatusDebugValues ? debuffs.Count : 0;
+            height =
+                (padding * 2)
+                + (lineHeight * 5)
+                + (debuffs.Count > 0 ? iconSize + spacing : 0)
+                + lineHeight
+                + (debugLines * lineHeight);
+        }
+
+        var framePadding = iconsOnly ? 0 : padding;
 
         var displaySize = ImGui.GetIO().DisplaySize;
         var requested = new Vector2(configuration.StatusHudX, configuration.StatusHudY);
@@ -149,31 +166,38 @@ internal sealed class StatusHudRenderer
             positionDirty = false;
         }
 
-        var position = ClampToDisplay(requested, new Vector2(contentWidth + padding * 2, height), displaySize);
-        var panelSize = new Vector2(contentWidth + padding * 2, height);
+        var panelSize = new Vector2(contentWidth + (framePadding * 2), height);
+        var position = ClampToDisplay(requested, panelSize, displaySize);
         var drawList = ImGui.GetForegroundDrawList();
 
-        var panelColor = ImGui.GetColorU32(new Vector4(0.035f, 0.045f, 0.065f, 0.86f));
-        var borderColor = ImGui.GetColorU32(new Vector4(0.62f, 0.72f, 0.90f, 0.9f));
         var textColor = ImGui.GetColorU32(new Vector4(0.96f, 0.97f, 1, 1));
         var mutedColor = ImGui.GetColorU32(new Vector4(0.72f, 0.76f, 0.84f, 1));
-        drawList.AddRectFilled(position, position + panelSize, panelColor, 6 * scale);
-        drawList.AddRect(position, position + panelSize, borderColor, 6 * scale);
 
-        var cursor = position + new Vector2(padding, padding);
-        drawList.AddText(cursor, textColor, statusLine);
-        cursor.Y += lineHeight;
-        drawList.AddText(cursor, mutedColor, pullLine);
-        cursor.Y += lineHeight;
-        drawList.AddText(cursor, textColor, mechanicLine);
-        cursor.Y += lineHeight;
-        drawList.AddText(cursor, mutedColor, assignmentLine);
-        cursor.Y += lineHeight;
-        var resultColor = context.LastResult is { Passed: false }
-            ? ImGui.GetColorU32(new Vector4(1, 0.34f, 0.38f, 1))
-            : mutedColor;
-        drawList.AddText(cursor, resultColor, resultLine);
-        cursor.Y += lineHeight + spacing;
+        if (!iconsOnly)
+        {
+            var panelColor = ImGui.GetColorU32(new Vector4(0.035f, 0.045f, 0.065f, 0.86f));
+            var borderColor = ImGui.GetColorU32(new Vector4(0.62f, 0.72f, 0.90f, 0.9f));
+            drawList.AddRectFilled(position, position + panelSize, panelColor, 6 * scale);
+            drawList.AddRect(position, position + panelSize, borderColor, 6 * scale);
+        }
+
+        var cursor = position + new Vector2(framePadding, framePadding);
+        if (!iconsOnly)
+        {
+            drawList.AddText(cursor, textColor, statusLine);
+            cursor.Y += lineHeight;
+            drawList.AddText(cursor, mutedColor, pullLine);
+            cursor.Y += lineHeight;
+            drawList.AddText(cursor, textColor, mechanicLine);
+            cursor.Y += lineHeight;
+            drawList.AddText(cursor, mutedColor, assignmentLine);
+            cursor.Y += lineHeight;
+            var resultColor = context.LastResult is { Passed: false }
+                ? ImGui.GetColorU32(new Vector4(1, 0.34f, 0.38f, 1))
+                : mutedColor;
+            drawList.AddText(cursor, resultColor, resultLine);
+            cursor.Y += lineHeight + spacing;
+        }
 
         for (var index = 0; index < debuffs.Count; index++)
         {
@@ -213,6 +237,11 @@ internal sealed class StatusHudRenderer
                 var size = ImGui.CalcTextSize(stacks);
                 drawList.AddText(iconMax - size - new Vector2(3, 2), textColor, stacks);
             }
+        }
+
+        if (iconsOnly)
+        {
+            return;
         }
 
         if (debuffs.Count > 0)
