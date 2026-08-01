@@ -46,6 +46,7 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
         Configuration =
             Services.PluginInterface.GetPluginConfig() as Configuration
             ?? new Configuration();
+        MigrateConfiguration();
         NormalizeConfiguration();
 
         Transform = new ArenaTransform();
@@ -583,6 +584,41 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
             Engine.NextAutomaticRestartSeed = null;
         }
     }
+
+    /// <summary>
+    /// Moves settings forward when a default changes in a way the user would
+    /// otherwise never see.
+    /// </summary>
+    /// <remarks>
+    /// A saved configuration persists every property, so raising a default alone
+    /// changes nothing for anyone who has already run the plugin. Each step only
+    /// rewrites values still sitting on the superseded default, leaving a
+    /// deliberate choice alone.
+    /// </remarks>
+    private void MigrateConfiguration()
+    {
+        const int currentVersion = 2;
+        if (Configuration.Version >= currentVersion)
+        {
+            return;
+        }
+
+        // v2: the element badges sat 3 yalms apart, low on the model and close
+        // enough to read as one cluster. Measured against the source scene they
+        // belong far wider: lightning above his head, ice down at his shins.
+        if (IsDefault(Configuration.MagicTellLightningHeight, 4.2f)
+            && IsDefault(Configuration.MagicTellIceHeight, 1.2f))
+        {
+            Configuration.MagicTellLightningHeight = 7.2f;
+            Configuration.MagicTellIceHeight = 2f;
+        }
+
+        Configuration.Version = currentVersion;
+        Configuration.Save();
+    }
+
+    private static bool IsDefault(float value, float previousDefault) =>
+        MathF.Abs(value - previousDefault) < 0.001f;
 
     private void NormalizeConfiguration()
     {

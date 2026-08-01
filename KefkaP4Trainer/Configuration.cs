@@ -77,12 +77,17 @@ public sealed class Configuration : IPluginConfiguration
 
     // Badge heights in yalms above the arena floor. The two badges are projected
     // from separate world points rather than stacked in screen space, so the gap
-    // holds as the camera pitches and orbits. Defaults sit ice down by Kefka's
-    // knees and lightning up at his shoulders, matching where the two orb rings
-    // ride on the model.
-    public float MagicTellIceHeight { get; set; } = 1.2f;
+    // holds as the camera pitches and orbits.
+    //
+    // The source scene rides its rings at y=7.23 (thunder) and y=3.58 (ice) on a
+    // model at the arena origin, and the two projects share a scale: the sim's
+    // NEO_EXDEATH_NORTH is (0, -47) against ArenaRadius 47. Lightning takes that
+    // measured height directly, which lands it above his head. Ice goes below the
+    // measured ring so it reads down at his shins rather than his waist, opening
+    // the gap to just over five yalms.
+    public float MagicTellIceHeight { get; set; } = 2f;
 
-    public float MagicTellLightningHeight { get; set; } = 4.2f;
+    public float MagicTellLightningHeight { get; set; } = 7.2f;
 
     // Simulator units applied in opposite directions on the arena X axis, for
     // camera angles where the badges would otherwise line up behind each other.
