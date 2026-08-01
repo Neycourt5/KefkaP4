@@ -75,4 +75,15 @@ internal interface ITrainerWindowHost
     void ClearHistory();
 
     void SaveConfiguration();
+
+    /// <summary>
+    /// Plays a cue immediately and reports which addon carried it, or null if
+    /// none could be reached.
+    /// </summary>
+    /// <remarks>
+    /// Sound playback cannot be verified from outside the game, so settings
+    /// offers a test that separates "no addon available" from "played, but you
+    /// heard nothing" — the latter being a volume or sound-index problem.
+    /// </remarks>
+    string? TestSoundCue(int soundIndex);
 }

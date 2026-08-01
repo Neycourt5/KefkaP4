@@ -9,6 +9,7 @@ internal sealed class ConfigWindow : Window
 {
     private readonly ITrainerWindowHost host;
     private string? arenaMessage;
+    private string? soundTestResult;
 
     public ConfigWindow(ITrainerWindowHost host)
         : base("Kefka P4 Trainer Settings###KefkaP4TrainerConfig")
@@ -374,7 +375,8 @@ internal sealed class ConfigWindow : Window
         return changed;
     }
 
-    private static bool DrawStatusHud(Configuration config)
+    // Not static: the sound test needs the host to reach the cue service.
+    private bool DrawStatusHud(Configuration config)
     {
         var changed = false;
 
@@ -602,6 +604,20 @@ internal sealed class ConfigWindow : Window
             {
                 config.CastFinishSound = finishSound;
                 changed = true;
+            }
+
+            if (ImGui.Button("Test sound"))
+            {
+                var addon = host.TestSoundCue(config.CastStartSound);
+                soundTestResult = addon is null
+                    ? "No usable addon found. Sound cannot play; see the Dalamud log."
+                    : $"Played sound {config.CastStartSound} through {addon}. "
+                        + "If you heard nothing, raise System Sounds volume or try another index.";
+            }
+
+            if (soundTestResult is not null)
+            {
+                ImGui.TextWrapped(soundTestResult);
             }
 
             ImGui.Unindent();

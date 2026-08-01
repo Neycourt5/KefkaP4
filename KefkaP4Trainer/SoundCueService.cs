@@ -17,6 +17,7 @@ internal sealed class SoundCueService
     private double previousTime = double.NegativeInfinity;
     private int previousPull = -1;
     private bool warned;
+    private bool warnedNoHost;
 
     public void Update(SimulationEngine engine, Configuration configuration)
     {
@@ -78,29 +79,94 @@ internal sealed class SoundCueService
     private bool Crossed(double moment, double time) =>
         moment > previousTime && moment <= time;
 
-    private unsafe void Play(int soundIndex)
+    /// <summary>
+    /// Addons to borrow PlaySoundEffect from, tried in order.
+    /// </summary>
+    /// <remarks>
+    /// The method is an addon instance method with nothing global to call it on,
+    /// and the exact name of the chat log has moved between underscore-prefixed
+    /// and bare over the years. Rather than bet the whole feature on one string,
+    /// walk a list of addons that are loaded whenever the HUD is and take the
+    /// first that resolves. The winner is cached so this costs one lookup.
+    /// </remarks>
+    private static readonly string[] HostAddons =
+    [
+        "_ChatLog",
+        "ChatLog",
+        "_ActionBar",
+        "_PartyList",
+        "_ParameterWidget",
+        "NamePlate",
+    ];
+
+    private string? resolvedHost;
+
+    /// <summary>
+    /// Plays a cue, reporting what happened.
+    /// </summary>
+    /// <returns>
+    /// The addon that carried the sound, or null when none resolved. Returned so
+    /// the settings test button can say which, rather than leaving a silent
+    /// result indistinguishable from a muted game.
+    /// </returns>
+    public unsafe string? Play(int soundIndex)
     {
         if (soundIndex <= 0)
         {
-            return;
+            return null;
         }
 
         try
         {
-            // PlaySoundEffect lives on an addon rather than anywhere global, so
-            // this borrows the chat log: it is loaded whenever the HUD is.
-            // GetAddonByName hands back Dalamud's wrapper, so unwrap to the
-            // ClientStructs pointer that carries the method.
-            var wrapper = Services.GameGui.GetAddonByName("_ChatLog", 1);
-            if (!wrapper.IsNull)
+            if (resolvedHost is not null)
             {
-                ((AtkUnitBase*)wrapper.Address)->PlaySoundEffect(soundIndex);
+                var cached = Services.GameGui.GetAddonByName(resolvedHost, 1);
+                if (!cached.IsNull)
+                {
+                    ((AtkUnitBase*)cached.Address)->PlaySoundEffect(soundIndex);
+                    return resolvedHost;
+                }
+
+                // The cached addon went away (HUD hidden, zoning); re-resolve.
+                resolvedHost = null;
             }
+
+            foreach (var name in HostAddons)
+            {
+                var wrapper = Services.GameGui.GetAddonByName(name, 1);
+                if (wrapper.IsNull)
+                {
+                    continue;
+                }
+
+                ((AtkUnitBase*)wrapper.Address)->PlaySoundEffect(soundIndex);
+                resolvedHost = name;
+                Services.Log.Information(
+                    "KefkaP4Trainer sound cues are using the {Addon} addon.", name);
+                return name;
+            }
+
+            WarnNoHostOnce();
+            return null;
         }
         catch (Exception exception)
         {
             WarnOnce(exception);
+            return null;
         }
+    }
+
+    private void WarnNoHostOnce()
+    {
+        if (warnedNoHost)
+        {
+            return;
+        }
+
+        warnedNoHost = true;
+        Services.Log.Warning(
+            "KefkaP4Trainer found none of these addons to play sound through: {Addons}.",
+            string.Join(", ", HostAddons));
     }
 
     private void WarnOnce(Exception exception)

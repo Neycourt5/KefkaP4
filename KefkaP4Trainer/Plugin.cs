@@ -333,6 +333,8 @@ public sealed class Plugin : IDalamudPlugin, ITrainerWindowHost
         testGhostCounter = 0;
     }
 
+    public string? TestSoundCue(int soundIndex) => soundCues.Play(soundIndex);
+
     public void SaveConfiguration()
     {
         NormalizeConfiguration();
